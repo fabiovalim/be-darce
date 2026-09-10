@@ -11,7 +11,7 @@
 | Nome | GitHub
 |---|---
 | Fábio D. Valim | [@fabiovalim](https://github.com/fabiovalim) 
-| Nome do integrante 2 | [@usuario2](https://github.com/usuario2)
+| Gustavo A. S. Sabino | [@GUSTAVO-ALESSANDRO](https://github.com/GUSTAVO-ALESSANDRO)
 | Nome do integrante 3 | [@usuario3](https://github.com/usuario3)
 | Nome do integrante 4 | [@usuario4](https://github.com/usuario4)
 
