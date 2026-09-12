@@ -1,4 +1,6 @@
-# BEDARCE
+<div align="center">
+  <img width="600" alt="bedarce-logo" src="https://github.com/user-attachments/assets/5e65ca4a-3857-4dbb-a404-a3bcc8100884" />
+</div>
 
 > Sistema de apoio para pessoas em situação de vício em apostas (bets).
 
