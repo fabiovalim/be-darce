@@ -2,11 +2,40 @@
   <img width="600" alt="bedarce-logo" src="https://github.com/user-attachments/assets/5e65ca4a-3857-4dbb-a404-a3bcc8100884" />
 </div>
 
-> Plataforma distribuída de apoio, acolhimento e reabilitação para pessoas em situação de vício em apostas (bets).
+> Plataforma distribuída de apoio, acolhimento e reabilitação para pessoas em situação de vício em apostas (bets), oferecendo um ambiente seguro e acessível para conscientização, prevenção e recuperação. A BEDARCE busca aproximar pessoas afetadas pelas apostas de profissionais especializados, grupos de apoio, mentores e conteúdos educacionais baseados em evidências, além de disponibilizar ferramentas de autocontrole e suporte para momentos de crise. A plataforma também valoriza o compartilhamento de experiências e relatos de pessoas que vivenciaram os impactos das apostas, promovendo acolhimento, identificação e uma rede de apoio ao longo do processo de recuperação.
 
 ## Sobre o projeto
 
-### O problema
+### Contribuidores
+
+<table width="100%">
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>GitHub</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Fábio Damas Valim</td>
+      <td><a href="https://github.com/fabiovalim">@fabiovalim</a></td>
+    </tr>
+    <tr>
+      <td>Gustavo Alessandro S. Sabino</td>
+      <td><a href="https://github.com/GUSTAVO-ALESSANDRO">@GUSTAVO-ALESSANDRO</a></td>
+    </tr>
+    <tr>
+      <td>Nome do integrante 3</td>
+      <td><a href="https://github.com/usuario3">@usuario3</a></td>
+    </tr>
+    <tr>
+      <td>Nome do integrante 4</td>
+      <td><a href="https://github.com/usuario4">@usuario4</a></td>
+    </tr>
+  </tbody>
+</table>
+
+## O problema
 
 O crescimento acelerado das apostas online no Brasil transformou um hábito, antes 
 restrito a canais tradicionais e jogos de loteria, em uma prática digital de acesso 
@@ -54,6 +83,49 @@ forma acessível e contínua, a quem mais precisa dele.
 </div>
 <br />
 
+### Algumas notícias de impacto
+As apostas online vêm ganhando espaço no Brasil e, junto com esse crescimento, surgem discussões sobre seus impactos financeiros e sociais. Algumas notícias recentes ajudam a contextualizar a dimensão desse problema:
+
+<br />
+
+<div align="center">
+
+<img width="700" alt="Bets retiraram bilhões das famílias brasileiras" src="https://github.com/user-attachments/assets/bdd0a36c-e151-40df-8e6a-b6ba8d9628d0" />
+
+Estudo citado pelo G1 aponta que as apostas online retiraram R$ 62,5 bilhões das famílias brasileiras ao longo de 2025, evidenciando o impacto financeiro que o crescimento das bets pode representar para as famílias.
+
+Fonte: G1 — Economia
+
+</div>
+
+<br /> <hr /> <br />
+
+<div align="center">
+
+O impacto das apostas online no Brasil
+
+<img width="700" alt="Notícia da BBC sobre apostas online" src="https://github.com/user-attachments/assets/91e68495-5acb-45e6-9a36-222cc48d2325" />
+
+Segundo o estudo inédito, as apostas retiraram entre R$ 120 bilhões e R$ 141 bilhões da atividade econômica brasileira em 2025, o que equivale a cerca de 0,9% a 1,1% do PIB daquele ano.
+
+"Para dimensionar essa magnitude, a perda estimada corresponde a algo entre 40% e 50% de todo o crescimento da economia em 2025 [que foi de 2,3%] e é cerca de cinco vezes maior que estimativas do impacto do tarifaço americano sobre o PIB brasileiro", compara Klein, no estudo.
+
+Fonte: BBC News Brasil
+
+</div>
+
+<br /> <hr /> <br />
+
+<div align="center">
+
+<img width="700" alt="Bets e endividamento dos brasileiros" src="https://github.com/user-attachments/assets/0ec5664b-26b4-4b43-af01-37c940db6ac6" />
+
+Segundo levantamento do DataSenado divulgado pela PROTESTE, 42% dos brasileiros que declararam ter gasto alguma quantia em apostas esportivas durante um mês estavam endividados. O levantamento também aponta que 20,3 milhões de pessoas com mais de 16 anos já apostaram nas chamadas bets.
+
+Fonte: PROTESTE — SeuDireito
+
+</div>
+
 ### A proposta da BEDARCE
 
 A BEDARCE nasce para preencher essa lacuna, uma plataforma digital de apoio a
@@ -62,31 +134,13 @@ validado (psicoeducação, prevenção de recaídas, etc.) da rotina de quem est
 tentando se recuperar, unindo atendimento profissional, rede de apoio entre pares e
 ferramentas de autocontrole em um único ecossistema.
 
-A solução será organizada em quatro grandes frentes de atuação, integradas entre si:
+A solução será organizada em três grandes frentes de atuação, integradas entre si:
 
-1. **Avaliação e Atendimento Clínico:** conecta o usuário a psicólogos
-   especializados, permitindo conhecer o perfil profissional de cada terapeuta,
-   agendar consultas (online ou presenciais) e realizar uma pré-avaliação inicial
-   sobre o próprio comportamento de jogo.
-2. **Rede de Apoio e Mentoria:** aproxima o usuário de mentores e ex-apostadores em
-   recuperação, por meio de conversas privadas, grupos de apoio e palestras/rodas de
-   conversa virtuais, reproduzindo digitalmente o efeito acolhedor de grupos como os
-   Jogadores Anônimos.
-3. **Conteúdo Educacional Gamificado:** apresenta, em formato de trilha com marcos
-   de progresso, conteúdos de psicoeducação e técnicas de terapia
-   cognitivo-comportamental (vídeos, leituras e exercícios), incentivando o usuário
-   a avançar de forma gradual e mensurável.
-4. **Alerta e Atendimento de Emergência:** permite o cadastro de familiares e
-   contatos de confiança, e oferece um "botão de pânico" para os momentos de
-   fissura (vontade repentina de apostar), acionando a rede de apoio e priorizando o
-   acolhimento imediato de quem está em crise, tentando o contato com psicólogos,
-   mentores, ou pessoas capacitadas nesse tipo de situação com o paciente.
+1. **Rede de Apoio e Mentoria:** aproxima o usuário de pessoas que já vivenciaram problemas relacionados às apostas, incluindo ex-apostadores em recuperação. A plataforma disponibiliza relatos e experiências de pessoas que enfrentaram perdas financeiras e outros impactos causados pelas apostas, além de possibilitar conversas privadas, grupos de apoio e palestras/rodas de conversa virtuais, promovendo acolhimento e identificação entre os usuários.
 
-O acesso a essas frentes acontecerá por dois caminhos complementares, um
-**aplicativo** voltado ao apostador em recuperação, pensado para uso rápido e
-acolhedor no dia a dia, e um **painel web** voltado à rede de apoio (psicólogos,
-mentores, familiares e administradores), pensado para acompanhamento, gestão e
-visão do progresso dos usuários assistidos.
+2. **Conteúdo Educacional Gamificado:** apresenta, em formato de trilha com marcos de progresso, conteúdos de psicoeducação e técnicas de terapia cognitivo-comportamental, por meio de vídeos, leituras e exercícios. O objetivo é incentivar o usuário a avançar de forma gradual e mensurável no processo de conscientização e recuperação.
+
+3. **Divulgação direta de profissionais da área:** facilita a conexão entre pessoas que buscam ajuda e profissionais especializados, permitindo que o usuário conheça os profissionais disponíveis e encontre atendimento adequado às suas necessidades.
 
 ### Impacto social esperado
 
@@ -142,66 +196,6 @@ patológico a partir das vivências do jogador**. Dissertação (Mestrado em
 Psicologia) - Universidade Católica Dom Bosco, Campo Grande, 2007. Disponível em:
 https://www.jogoremoto.pt/docs/extra/uPoRHt.pdf
 
-## Contribuidores
-
-| Nome | GitHub
-|---|---
-| Fábio D. Valim | [@fabiovalim](https://github.com/fabiovalim) 
-| Gustavo A. S. Sabino | [@GUSTAVO-ALESSANDRO](https://github.com/GUSTAVO-ALESSANDRO)
-| Nome do integrante 3 | [@usuario3](https://github.com/usuario3)
-| Nome do integrante 4 | [@usuario4](https://github.com/usuario4)
-
-## Regras de Branches
-
-| Branch | GitHub
-|---|---
-| **`main`** | Branch estável e protegida. Só recebe código via Pull Request revisado por pelo menos 1 integrante. Nunca commitar direto nela.
-| **`dev`** | Branch de integração do time. As features são mescladas aqui e testadas antes de irem para a `main`.
-| **`feature/nome-da-tarefa`** | uma branch por funcionalidade/tarefa, criada a partir da `dev`. Exemplo: `feature/cadastro-usuario`, `feature/tela-login`.
-| **`fix/nome-do-bug`** | para correções pontuais de bugs.
-
-<br>
-<div align="center">
-  <img
-    width="1099"
-    height="70"
-    alt="flux2"
-    src="https://github.com/user-attachments/assets/ce0ee5d6-75e7-4f68-b7cf-93b6f311bfe7"
-  />
-</div>
-<br>
-
-## Regras de Commit
-
-Seguimos o padrão **Conventional Commits**, no formato:
-
-```
-tipo: descrição breve e no imperativo
-```
-
-**Tipos utilizados:**
-
-| Tipo | Quando usar |
-|---|---|
-| `feat` | Nova funcionalidade |
-| `fix` | Correção de bug |
-| `docs` | Alterações em documentação (README, comentários) |
-| `style` | Formatação, indentação, sem mudança de lógica |
-| `refactor` | Reestruturação de código sem alterar comportamento |
-| `test` | Criação ou ajuste de testes |
-| `chore` | Tarefas de manutenção (configs, dependências, etc.) |
-
-### **Exemplos:**
-
-```
-feat: adiciona formulário de cadastro de usuário
-```
-```
-fix: corrige erro de validação no login
-```
-```
-docs: atualiza instruções de instalação no README
-```
 
 ## Estrutura de pastas
 [A estrutura de pastas será adicionada futuramente]
