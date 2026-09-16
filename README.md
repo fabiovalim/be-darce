@@ -8,7 +8,7 @@
 
 ### Contribuidores
 
-<table width="100%">
+<table  align="center">
   <thead>
     <tr>
       <th>Nome</th>
