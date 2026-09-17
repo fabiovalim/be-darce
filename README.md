@@ -25,8 +25,8 @@
       <td><a href="https://github.com/GUSTAVO-ALESSANDRO">@GUSTAVO-ALESSANDRO</a></td>
     </tr>
     <tr>
-      <td>Nome do integrante 3</td>
-      <td><a href="https://github.com/usuario3">@usuario3</a></td>
+      <td>Caio Bueno Finocchio Martins</td>
+      <td><a href="https://github.com/caiobfm">@caiobfm</a></td>
     </tr>
     <tr>
       <td>Nome do integrante 4</td>
@@ -37,8 +37,8 @@
 
 ## O problema
 
-O crescimento acelerado das apostas online no Brasil transformou um hábito, antes 
-restrito a canais tradicionais e jogos de loteria, em uma prática digital de acesso 
+O crescimento acelerado das apostas online no Brasil transformou um hábito, antes
+restrito a canais tradicionais e jogos de loteria, em uma prática digital de acesso
 quase irrestrito, disponível 24 horas por dia no bolso de qualquer pessoa com smartphone.
 Esse avanço trouxe consigo um problema de saúde pública ainda pouco enfrentado, o
 Transtorno do Jogo, reconhecido pelo DSM-5-TR como uma condição psiquiátrica
@@ -84,6 +84,7 @@ forma acessível e contínua, a quem mais precisa dele.
 <br />
 
 ### Algumas notícias de impacto
+
 As apostas online vêm ganhando espaço no Brasil e, junto com esse crescimento, surgem discussões sobre seus impactos financeiros e sociais. Algumas notícias recentes ajudam a contextualizar a dimensão desse problema:
 
 <br />
@@ -145,6 +146,7 @@ A solução será organizada em três grandes frentes de atuação, integradas e
 ### Impacto social esperado
 
 **Quem é beneficiado:**
+
 - **Pessoas em situação de vício em apostas ou em comportamento de risco**, que
   passam a ter acesso facilitado a atendimento psicológico especializado, conteúdo
   educativo baseado em evidências e suporte em momentos de crise.
@@ -158,6 +160,7 @@ A solução será organizada em três grandes frentes de atuação, integradas e
   trabalho e sobrecarga de serviços públicos de saúde mental [4].
 
 **Como o impacto poderá ser medido:**
+
 - Número de usuários que concluem etapas da trilha educacional;
 - Número de consultas agendadas e realizadas com psicólogos parceiros;
 - Frequência de acionamento do botão de pânico ao longo do tempo e tempo até o
@@ -175,8 +178,7 @@ As afirmações acima estão fundamentadas nos seguintes estudos e relatórios:
 
 [1] MELO, B. F.; VIEIRA, A. S. P.; PUCCI, S. H. M.; SILVA, P. O. **Contribuição da
 terapia cognitivo-comportamental para o tratamento de jogos de azar online**.
-Revista Ibero-Americana de Humanidades, Ciências e Educação (REASE), v. 11, n. 7,
-2025. Disponível em: https://doi.org/10.51891/rease.v11i7.20273
+Revista Ibero-Americana de Humanidades, Ciências e Educação (REASE), v. 11, n. 7, 2025. Disponível em: https://doi.org/10.51891/rease.v11i7.20273
 
 [2] STUANI, D.; POLLI, A. R.; MILANI, B. B.; TRINDADE, B. P.; MARIN, M. G.
 **Transtorno do jogo: a emergência do fenômeno e as contribuições da terapia
@@ -196,9 +198,10 @@ patológico a partir das vivências do jogador**. Dissertação (Mestrado em
 Psicologia) - Universidade Católica Dom Bosco, Campo Grande, 2007. Disponível em:
 https://www.jogoremoto.pt/docs/extra/uPoRHt.pdf
 
-
 ## Estrutura de pastas
+
 [A estrutura de pastas será adicionada futuramente]
 
 ## Como rodar o projeto
+
 [Instruções de instalação e execução será preenchida conforme o projeto evoluir.]
