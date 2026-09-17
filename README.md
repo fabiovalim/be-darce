@@ -29,8 +29,8 @@
       <td><a href="https://github.com/caiobfm">@caiobfm</a></td>
     </tr>
     <tr>
-      <td>Nome do integrante 4</td>
-      <td><a href="https://github.com/usuario4">@usuario4</a></td>
+      <td>Diego Alves de Oliveira</td>
+      <td><a href="https://github.com/diego-codev">@diego-codev</a></td>
     </tr>
   </tbody>
 </table>
