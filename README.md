@@ -198,6 +198,84 @@ patológico a partir das vivências do jogador**. Dissertação (Mestrado em
 Psicologia) - Universidade Católica Dom Bosco, Campo Grande, 2007. Disponível em:
 https://www.jogoremoto.pt/docs/extra/uPoRHt.pdf
 
+---
+
+## Visão Geral da Arquitetura e Comunicação do Sistema
+
+A arquitetura geral do sistema foi criada sob uma abordagem distribuída garantindo que cada componente possua responsabilidades bem delimitadas e possa evoluir de forma independente, de modo que toda a comunicação entre as camadas ocorra exclusivamente por meio de chamadas de interface de rede padronizadas baseadas em requisições e respostas sobre protocolo web, eliminando o uso de intermediários complexos ou barramentos de mensagens externos. Nesse sentido, o ecossistema foi estruturado de forma que os clientes na ponta conversam com uma única porta de entrada centralizada, a qual distribui o tráfego de maneira controlada para adaptadores de interface específicos que, por sua vez, coordenam as chamadas aos microserviços de domínio responsáveis por gerenciar os dados em seus respectivos repositórios isolados, ou seja, essa divisão rigorosa foi adotada para evitar acoplamento excessivo entre os módulos, permitindo que falhas em um domínio específico sejam tratadas de maneira isolada sem comprometer a estabilidade e a disponibilidade de todo o sistema.
+
+---
+
+## Interfaces Cliente
+
+### Portal do Usuário
+
+O portal do usuário é uma interface cliente do sistema, que acessa a porta de entrada da aplicação e atende diretamente a três perfis da plataforma, os pacientes, psicólogos e mentores (familiar de um apostador ou ex-apostador) permitindo que qualquer pessoa acesse o sistema para se registrar ou entrar com facilidade, sendo que para os pacientes a experiência foca em ver postagens de psicólogos que apresentam suas descrições, formas de trabalho, horários e contatos com opções de filtro por preço e nome, além de ver postagens livres de mentores e acompanhar palestras ou chamadas de grupos de apoio no estilo de apostadores anônimos baseadas em links externos com opções de filtro por data ou nome do evento, tudo isso enquanto o paciente também pode avançar em trilhas de aprendizado gamificadas que dão pontos a cada etapa concluída por meio de leituras, atividades e vídeos, podendo ainda consultar o perfil completo de mentores e psicólogos.
+
+Enquanto os mentores utilizam o espaço para criar postagens livres, divulgar palestras e agendar chamadas em grupo. Já os psicólogos criam postagens sobre seus trabalhos profissionais e possuem o poder especial de promover ou evoluir um paciente para a função de mentor, significando que ele está totalmente curado do vício, mantendo toda essa comunicação conectada unicamente com a porta de entrada centralizada da arquitetura.
+
+### Painel Administrativo
+
+O painel administrativo é a segunda interface do sistema dedicada exclusivamente ao administrador para exercer o controle total e a gestão de toda a plataforma, permitindo que ele visualize e gerencie livremente as trilhas de aprendizado, controle todas as postagens feitas pelos usuários, além de gerenciar diretamente os perfis de todos os pacientes, psicólogos e mentores, garantindo que o sistema funcione de forma organizada e centralizada sem complicações desnecessárias
+
+---
+
+## API Gateway e Roteamento
+
+O API Gateway atua como a única porta de entrada para todas as requisições externas originadas nos clientes, concentrando na borda da arquitetura um conjunto de responsabilidades transversais essenciais para a segurança e a organização do tráfego, sendo ele o responsável por interceptar as chamadas e aplicar regras de roteamento direcionando o fluxo para a interface correspondente sem expor a estrutura interna dos microserviços de domínio ou os bancos de dados. Além do roteamento, o gateway aplica políticas de controle de volume de requisições para evitar sobrecarga na aplicação, mantendo-se estritamente genérico e livre de regras de negócio.
+
+---
+
+## Back-ends for Front-ends (BFFs)
+
+### Back-end do Portal
+
+O back-end do portal atua como um intermediário leve e especializado exclusivamente em atender à interface dos pacientes, mentores e psicólogos da BEDARCE, reunindo as informações necessárias para exibir a vitrine de profissionais, as postagens dos mentores, os links de palestras, as chamadas em grupo de apoio e o progresso das trilhas educacionais gamificadas em uma única resposta otimizada para a web, além de verificar o tipo do usuário. Assim, a decisão de separar este componente do painel administrativo foi formada pela diferença na quantidade de requisições dos usuários em relação à quantidade das requisições dos administradores, o que faz todo o sentido, pois o portal contém muito mais usuários do que administradores, o que exige o acesso rápido a dados de múltiplos dados do sistema de apoio ao vício em apostas, como perfis de psicólogos, conteúdos e eventos, permitindo que a aplicação do usuário funcione de forma fluida e que se proteja de falhas parciais caso algum microserviço fique instável momentaneamente, podendo replica-lo facilmente caso haja alguma necessidade
+
+### BFF do Administrador
+
+O back-end do administrador foi estruturado para atender exclusivamente às demandas de gestão operadas pelo administrador da plataforma, sendo completamente separado para lidar de forma segura com os dados sensíveis de perfis, gerenciamento de postagens e alterações nas trilhas de aprendizado dos usuários. Este back-end valida se a pessoa logada realmente possui permissão de administrador antes de processar qualquer pedido de modificação ou listagem geral, buscando diretamente nos microserviços de domínio as informações completas necessárias para que o painel de controle funcione de maneira centralizada, segura e organizada
+
+---
+
+## Microserviços e Subdivisões
+
+### Serviço de Usuários
+
+O microserviço de usuários é o componente responsável por gerenciar a identidade e o acesso de todos os participantes do ecossistema da BEDARCE, englobando os quatro perfis autorizados na plataforma, o paciente, o mentor, o psicólogo e o administrador. Internamente, ele é dividido em subdomínios que cuidam do registro de novas contas, da criptografia e validação de senhas, da emissão de credenciais de sessão e da manutenção dos papéis e permissões associados a cada identificador. Assim, a decisão de isolar este serviço em uma estrutura própria foi pensada para evitar a duplicação de regras de autenticação e assegurar que a gestão de papéis seja centralizada em um único local, comunicando-se com os demais componentes ao receber requisições dos back-end das interface.
+
+### Serviço de Atendimento
+
+O microserviço de atendimento concentra a gestão profissional de suporte psicológico dentro da plataforma, sendo subdividido em módulos que controlam o perfil profissional, as publicações com descrições e formas de trabalho dos psicólogos, a definição de disponibilidades de horários e a vitrine de profissionais com opções de filtro por preço e nome. E com isso, a separação deste domínio ocorreu porque a agenda de profissionais exige regras rígidas de concorrência para evitar reservas duplas e tratamentos diferenciados de dados, comunicando-se com os back-ends de interface e mantendo seu próprio repositório de dados exclusivo, pois este microserviço quando comparado aos outros é o que tem menos uso de recursos computacionais, portanto sofre menos instabilidade.
+
+### Serviço de Gamificação
+
+O microserviço de gamificação gerencia a parte educacional interativa da plataforma, contendo subdomínios dedicados ao armazenamento de trilhas de aprendizado, estruturação de etapas interativas baseadas em leituras e vídeos, cálculo de pontuações e progressão de níveis dos usuários. E portanto, a divisão deste serviço justifica-se pela alta intensidade de interações de leitura e escrita, associadas ao acompanhamento de progresso e pela necessidade de isolar a lógica de pontuação dos demais domínios.
+
+### Serviço de Comunidade
+
+O microsserviço de comunidade centraliza as interações de apoio mútuo e engajamento social entre os membros, sendo subdividido em módulos que gerenciam perfis de mentores, a criação de postagens livres, o agendamento de palestras e chamadas em grupo no estilo de apostadores anônimos para reuniões de incentivo, com reuniões acontecendo em links externos, além de fóruns e relatos de superação. A escolha por manter este domínio separado baseia-se na especificidade das regras de interação social e controle de eventos, permitindo que os usuários filtrem palestras e postagens por data ou nome, garantindo o funcionamento fluido de toda a rede de apoio da BEDARCE.
+
+---
+
+## Padrão Database per Service, Outbox e Relay
+
+A arquitetura adota também o padrão de banco de dados isolado por serviço, onde cada um dos quatro microserviços possui o seu próprio banco de dados exclusivo, impedindo que qualquer componente acesse diretamente as tabelas de outro domínio e garantindo total independência técnica e de evolução estrutural. Desta forma, para solucionar o desafio de manter a consistência entre diferentes bases de dados sem recorrer a transações distribuídas complexas e lentas que prejudicariam a disponibilidade, o sistema implementa o padrão Outbox combinado com processos autônomos de encaminhamento conhecidos como Relay. Ou seja, sempre que um microserviço precisa persistir uma alteração local e simultaneamente notificar outro domínio sobre um evento relevante, a modificação dos dados e o registro da intenção de envio do evento são gravados atomicamente na mesma transação dentro do banco do próprio serviço emissor, e em segundo plano, um processo autônomo e contínuo lê periodicamente esses eventos pendentes na tabela de controle, despachando-os via requisições de rede para o microserviço de destino e assegurando a entrega confiável mesmo diante de instabilidades temporárias de comunicação.
+
+---
+
+## CQRS no Microserviço de Gamificação
+
+Também foi implementado o padrão de separação de responsabilidades entre comandos e consultas, conhecido como CQRS, aplicado no microserviço de gamificação da BEDARCE devido à alta diferença operacional de requisições de escrita e leitura nesse domínio, onde o volume de leituras para exibição de progresso e dos conteúdos das trilhas, supera a frequência de gravações de conclusão de etapas. Nesse sentido, por ter essa diferença do volume de escrita e de leitura, para atender a essa exigência de performance, a gamificação se divide estruturalmente em dois modelos, o de escrita, responsável por processar comandos que aplicam regras estritas de validação, verificação de pré-requisitos e gravação de pontos, e o modelo de leitura, composto por estruturas de dados otimizadas especificamente para responder de forma instantânea às consultas de interface solicitadas pelos usuários em suas trilhas gamificadas, como o conteúdo atual ou passado da trilha. Com isso, ambos os modelos contém banco de dados separados, e a atualização do modelo de leitura não ocorre de forma síncrona durante a execução dos comandos de escrita, em vez disso, também se utiliza o Outbox e o Relay, dessa forma, quando um paciente conclui uma etapa educativa da recuperação, o modelo de escrita registra o evento em sua base de dados e o despacha de forma assíncrona para atualizar o modelo de leitura com uma defasagem temporal controlada e aceitável, garantindo alta disponibilidade e isolamento eficiente entre as operações de modificação e recuperação de dados.
+
+---
+
+## SAGA de Evolução de Paciente para Mentor
+
+O processo que transforma um paciente em mentor é estruturado como uma transação de negócio de longa duração gerenciada por meio da arquitetura SAGA orquestrada, cujo controle central reside no microserviço de gamificação. Assim, o fluxo é iniciado quando um paciente que já estava em processo de recuperação e participa de uma consulta com um profissional de psicologia, e além de mostrar e provar que está totalmente recuperado, também mostra a vontade e vocação de se tornar um mentor, inspirando os pacientes a se recuperarem como ele, com isso, este profissional avalia que o paciente atingiu um estágio avançado de recuperação e está plenamente apto a compartilhar suas experiências, registrando a sua aprovação de evolução de status diretamente no microserviço de atendimento, que é o gatilho inicial. Desta forma, a partir dessa validação inicial, o orquestrador percebe a mudança e assume o controle, acionando sequencialmente os demais domínios envolvidos para promover a alteração do perfil do usuário. Portando, no segundo passo, o orquestrador solicita ao microserviço de usuários que atualize o papel do participante de paciente para mentor e em seguida, o fluxo avança para o microserviço de comunidade, que atua como o pivô da SAGA, realizando as configurações necessárias e criando o perfil oficial de mentor na base comunitária, este ponto pivô representa o momento crítico e sem retorno do processo, ou seja, caso o microserviço de comunidade aceite a transação, a promoção é considerada definitiva e não pode mais ser cancelada por regras de negócio, assim, se a operação de pivô for concluída com sucesso, o orquestrador direciona a etapa final para o microserviço de gamificação, que libera o acesso à trilha de estudos exclusiva voltada para a capacitação de novos mentores, porém, se ocorrer qualquer falha de validação ou recusa de negócio antes ou durante o passo pivô, o orquestrador executa automaticamente transações compensatórias em ordem inversa, desfazendo as alterações de papéis aplicadas anteriormente e garantindo que o sistema retorne a um estado consistente e previsível, mas se for após a confirmação do pivô, o erro é contornado com mecânicas como retententativas. O pivô foi escolhido como o serviço de comunidade, pois este é o serviço mais custoso computacionalmente na evolução do status do usuário, o que garante que qualquer problema estrutural pesado seja resolvido antes de liberar as etapas finais na gamificação.
+
+---
+
 ## Estrutura de pastas
 
 [A estrutura de pastas será adicionada futuramente]
