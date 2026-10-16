@@ -272,7 +272,59 @@ Também foi implementado o padrão de separação de responsabilidades entre com
 
 ## SAGA de Evolução de Paciente para Mentor
 
-O processo que transforma um paciente em mentor é estruturado como uma transação de negócio de longa duração gerenciada por meio da arquitetura SAGA orquestrada, cujo controle central reside no microserviço de gamificação. Assim, o fluxo é iniciado quando um paciente que já estava em processo de recuperação e participa de uma consulta com um profissional de psicologia, e além de mostrar e provar que está totalmente recuperado, também mostra a vontade e vocação de se tornar um mentor, inspirando os pacientes a se recuperarem como ele, com isso, este profissional avalia que o paciente atingiu um estágio avançado de recuperação e está plenamente apto a compartilhar suas experiências, registrando a sua aprovação de evolução de status diretamente no microserviço de atendimento, que é o gatilho inicial. Desta forma, a partir dessa validação inicial, o orquestrador percebe a mudança e assume o controle, acionando sequencialmente os demais domínios envolvidos para promover a alteração do perfil do usuário. Portando, no segundo passo, o orquestrador solicita ao microserviço de usuários que atualize o papel do participante de paciente para mentor e em seguida, o fluxo avança para o microserviço de comunidade, que atua como o pivô da SAGA, realizando as configurações necessárias e criando o perfil oficial de mentor na base comunitária, este ponto pivô representa o momento crítico e sem retorno do processo, ou seja, caso o microserviço de comunidade aceite a transação, a promoção é considerada definitiva e não pode mais ser cancelada por regras de negócio, assim, se a operação de pivô for concluída com sucesso, o orquestrador direciona a etapa final para o microserviço de gamificação, que libera o acesso à trilha de estudos exclusiva voltada para a capacitação de novos mentores, porém, se ocorrer qualquer falha de validação ou recusa de negócio antes ou durante o passo pivô, o orquestrador executa automaticamente transações compensatórias em ordem inversa, desfazendo as alterações de papéis aplicadas anteriormente e garantindo que o sistema retorne a um estado consistente e previsível, mas se for após a confirmação do pivô, o erro é contornado com mecânicas como retententativas. O pivô foi escolhido como o serviço de comunidade, pois este é o serviço mais custoso computacionalmente na evolução do status do usuário, o que garante que qualquer problema estrutural pesado seja resolvido antes de liberar as etapas finais na gamificação.
+O processo que transforma um paciente em mentor é estruturado como uma transação de negócio de longa duração gerenciada por meio da arquitetura SAGA orquestrada, cujo controle central reside no microserviço de gamificação. Assim, o fluxo é iniciado quando um paciente que já estava em processo de recuperação e participa de uma consulta com um profissional de psicologia, e além de mostrar e provar que está totalmente recuperado, também mostra a vontade e vocação de se tornar um mentor, inspirando os pacientes a se recuperarem como ele, com isso, este profissional avalia que o paciente atingiu um estágio avançado de recuperação e está plenamente apto a compartilhar suas experiências, registrando a sua aprovação de evolução de status diretamente no microserviço de atendimento, que é o gatilho inicial. Desta forma, a partir dessa validação inicial, o orquestrador percebe a mudança e assume o controle, acionando sequencialmente os demais domínios envolvidos para promover a alteração do perfil do usuário. Portanto, no segundo passo, o orquestrador solicita ao microserviço de usuários que atualize o papel do participante de paciente para mentor e em seguida, o fluxo avança para o microserviço de comunidade, que atua como o pivô da SAGA, realizando as configurações necessárias e criando o perfil oficial de mentor na base comunitária, este ponto pivô representa o momento crítico e sem retorno do processo, ou seja, caso o microserviço de comunidade aceite a transação, a promoção é considerada definitiva e não pode mais ser cancelada por regras de negócio, assim, se a operação de pivô for concluída com sucesso, o orquestrador direciona a etapa final para o microserviço de gamificação, que libera o acesso à trilha de estudos exclusiva voltada para a capacitação de novos mentores, porém, se ocorrer qualquer falha de validação ou recusa de negócio antes ou durante o passo pivô, o orquestrador executa automaticamente transações compensatórias em ordem inversa, desfazendo as alterações de papéis aplicadas anteriormente e garantindo que o sistema retorne a um estado consistente e previsível, mas se for após a confirmação do pivô, o erro é contornado com mecânicas como retententativas. O pivô foi escolhido como o serviço de comunidade, pois este é o serviço mais custoso computacionalmente na evolução do status do usuário, o que garante que qualquer problema estrutural pesado seja resolvido antes de liberar as etapas finais na gamificação.
+
+---
+
+## API REST e Contratos dos Microserviços
+ 
+### Como a API REST Funciona na BEDARCE
+ 
+Toda a comunicação síncrona da BEDARCE é feita por APIs REST sobre HTTP com JSON, ou seja, cada elemento do negócio (um psicólogo, uma consulta, uma trilha, uma postagem) é tratado como um recurso identificado por uma URL, como `/psicologos` ou `/consultas`, e o que se faz com o recurso é definido pelo verbo HTTP da requisição, GET, POST, PUT e DELETE. O resultado de cada chamada é informado por um código de status HTTP, de modo que quem chama (um BFF ou o orquestrador da SAGA) sabe se deu certo ou o que deu errado sem precisar interpretar texto.
+ 
+### Tipos de Acesso das Rotas
+ 
+| Acesso | Quem pode chamar |
+| --- | --- |
+| Pública | Qualquer pessoa, sem token. Só existem duas: cadastro e login |
+| Logado | Qualquer usuário com token válido (paciente, psicólogo, mentor ou administrador) |
+| Paciente, Psicólogo, Mentor ou Administrador | Somente quem tem aquele papel, conferido a partir do papel que vem dentro do token |
+| Interna | Somente outro componente do sistema, como o orquestrador da SAGA ou o Relay de outro serviço, não passa pelo gateway |
+ 
+### Códigos de Status HTTP Utilizados
+ 
+O código de status é a parte da resposta que diz se a chamada deu certo e, quando não deu, de quem foi o problema. Os códigos usados na BEDARCE são os da tabela abaixo.
+ 
+| Código | Nome | O que significa | Onde aparece na BEDARCE |
+| --- | --- | --- | --- |
+| 200 | OK | A chamada deu certo e a resposta traz o resultado | Consultas, alterações, login e a maioria das ações |
+| 201 | Created | Um recurso novo foi criado e a resposta traz o recurso, com o endereço dele no cabeçalho `Location` | Cadastro, agendamento de consulta, criação de postagem, trilha ou encontro |
+| 202 | Accepted | O pedido foi recebido e será processado em segundo plano | Aprovação de mentoria (início da SAGA) e recebimento de eventos entre serviços |
+| 204 | No Content | Deu certo e não há nada para devolver | Remoções e compensações da SAGA |
+| 400 | Bad Request | Os dados enviados estão errados (campo faltando, formato inválido), e repetir igual não adianta | Qualquer rota que receba dados |
+| 401 | Unauthorized | O sistema não sabe quem está chamando: o token não foi enviado, venceu ou é inválido | Toda rota que não é pública |
+| 403 | Forbidden | O sistema sabe quem é, mas essa pessoa não pode fazer aquilo: papel errado ou recurso de outra pessoa | Rotas restritas a um papel ou ao dono do recurso |
+| 404 | Not Found | O recurso pedido não existe | Rotas com um id na URL |
+| 429 | Too Many Requests | O limite de requisições do gateway foi excedido | Todas as rotas externas |
+| 503 | Service Unavailable | Um microserviço de que a resposta depende não respondeu a tempo | Resposta do BFF quando uma dependência está fora do ar |
+ 
+ 
+### Estratégia de Versionamento
+ 
+A versão da API fica na própria URL, no formato `/v1/consultas`, e na BEDARCE todas as rotas nascem e permanecem na versão `v1`, os front-ends chamam `/portal/v1/...` e `/admin/v1/...` no gateway, e os BFFs chamam `/v1/...` nos microserviços. A versão `v2` não existe agora, ela só será criada se algum dia for preciso fazer uma mudança incompatível, como remover ou renomear um campo, mudar o significado de um campo ou tornar obrigatório algo que era opcional, nesse caso a `v2` entra no ar ao lado da `v1`, que continua funcionando por um prazo anunciado e passa a avisar nas suas respostas que será descontinuada, de modo que os clientes antigos não quebram de uma hora para a outra, mas mudanças compatíveis, como acrescentar um campo opcional ou uma rota nova, continuam na `v1`.
+ 
+ 
+### Contrato dos Microserviços
+ 
+As tabelas abaixo trazem todas as rotas de cada microserviço, com os caminhos relativos ao próprio serviço (por exemplo, `/v1/consultas`). Assim, a coluna Acesso indica quem pode chamar a rota, conforme a tabela de tipos de acesso, a coluna Sucesso traz o código de quando tudo dá certo e a coluna Erros explica o que cada código significa naquela rota.
+ 
+#### Microserviço de Usuários
+
+#### Microserviço de Atendimento
+
+#### Microserviço de Gamificação
+
+#### Microserviço de Comunidade
 
 ---
 
