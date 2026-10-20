@@ -224,7 +224,11 @@ O painel administrativo é a segunda interface do sistema dedicada exclusivament
 
 ## API Gateway e Roteamento
 
-O API Gateway atua como a única porta de entrada para todas as requisições externas originadas nos clientes, concentrando na borda da arquitetura um conjunto de responsabilidades transversais essenciais para a segurança e a organização do tráfego, sendo ele o responsável por interceptar as chamadas e aplicar regras de roteamento direcionando o fluxo para a interface correspondente sem expor a estrutura interna dos microserviços de domínio ou os bancos de dados. Além do roteamento, o gateway aplica políticas de controle de volume de requisições para evitar sobrecarga na aplicação, mantendo-se estritamente genérico e livre de regras de negócio.
+O API Gateway atua como a única porta de entrada aberta e acessével para todas as requisições externas originadas nos clientes, concentrando na borda da arquitetura um conjunto de responsabilidades essenciais para a segurança e a organização do tráfego, sendo ele o responsável por interceptar as chamadas e aplicar regras de roteamento direcionando o fluxo para a interface correspondente sem expor a estrutura interna dos microserviços de domínio ou os bancos de dados, pois por ser o ponto focal do sistema, ele conhece todas as regras de roteamento, que são estruturadas por prefixos de caminhos, recebendo as chamadas dos front-ends e aplicando o direcionamento correto do fluxo, na qual as rotas iniciadas com /portal/v1/** são repassadas de forma controlada para o bff-portal, enquanto as rotas com /admin/v1/** são encaminhadas para o bff-admin, mantendo oculta e protegida a estrutura interna dos microsserviços de domínio e as instâncias de banco de dados.
+
+Além do roteamento, o gateway assume atribuições críticas de segurança, como o controle de volume de requisições para evitar sobrecarga na aplicação, por meio de rate limiting, o que protege a aplicação contra abusos e tentativas de sobrecarga.
+
+Dessa forma, o gateway se mantém genérico e livre de regras de negócio, na qual ele intercepta a requisição externa na única interface exposta, repassa o fluxo para o BFF correspondente, que aciona os microsserviços de domínio e seus respectivos bancos de dados isolados para agregar os dados, devolvendo a resposta completa de volta ao cliente de maneira totalmente transparente, rápida e segura. 
 
 ---
 
@@ -262,7 +266,7 @@ O microsserviço de comunidade centraliza as interações de apoio mútuo e enga
 
 ## Padrão Database per Service, Outbox e Relay
 
-A arquitetura adota também o padrão de banco de dados isolado por serviço, onde cada um dos quatro microserviços possui o seu próprio banco de dados exclusivo, impedindo que qualquer componente acesse diretamente as tabelas de outro domínio e garantindo total independência técnica e de evolução estrutural. Desta forma, para solucionar o desafio de manter a consistência entre diferentes bases de dados sem recorrer a transações distribuídas complexas e lentas que prejudicariam a disponibilidade, o sistema implementa o padrão Outbox combinado com processos autônomos de encaminhamento conhecidos como Relay. Ou seja, sempre que um microserviço precisa persistir uma alteração local e simultaneamente notificar outro domínio sobre um evento relevante, a modificação dos dados e o registro da intenção de envio do evento são gravados atomicamente na mesma transação dentro do banco do próprio serviço emissor, e em segundo plano, um processo autônomo e contínuo lê periodicamente esses eventos pendentes na tabela de controle, despachando-os via requisições de rede para o microserviço de destino e assegurando a entrega confiável mesmo diante de instabilidades temporárias de comunicação.
+A arquitetura adota também o padrão de banco de dados isolado por serviço, onde cada um dos quatro microserviços possui o seu próprio banco de dados exclusivo, impedindo que qualquer componente acesse diretamente as tabelas de outro domínio e garantindo total independência técnica e de evolução estrutural, além de evitar o risco de *dual write* (quando um serviço grava em seu banco e falha ao notificar outro). Desta forma, para solucionar o desafio de manter a consistência entre diferentes bases de dados sem recorrer a transações distribuídas complexas e lentas que prejudicariam a disponibilidade, o sistema implementa o padrão **Outbox** combinado com o processo de encaminhamento conhecido como *Relay*, que lê periodicamente eventos pendentes e os despacha via HTTP REST para o serviço destino, garantindo entrega confiável sem brokers externos. Ou seja, sempre que um microserviço precisa persistir uma alteração local e simultaneamente notificar outro domínio sobre um evento relevante, a modificação dos dados e o registro da intenção de envio do evento são gravados atomicamente na mesma transação dentro do banco do próprio serviço emissor, e em segundo plano, um processo autônomo e contínuo lê periodicamente esses eventos pendentes na tabela de controle, despachando-os via requisições de rede para o microserviço de destino e assegurando a entrega confiável mesmo diante de instabilidades temporárias de comunicação.
 
 ---
 
@@ -285,10 +289,19 @@ O caminho triste ocorre quando uma recusa de negócio impede o andamento da tran
 ---
 
 ## API REST e Contratos dos Microserviços
+
+Cada microsserviço expõe contratos de API REST sobre HTTP retornando dados em JSON, na qual as rotas utilizam substantivos no plural, verbos HTTP corretos (`GET`, `POST`, `PUT`, `DELETE`) e códigos de status padronizados.
  
 ### Como a API REST Funciona na BEDARCE
  
-Toda a comunicação síncrona da BEDARCE é feita por APIs REST sobre HTTP com JSON, ou seja, cada elemento do negócio (um psicólogo, uma consulta, uma trilha, uma postagem) é tratado como um recurso identificado por uma URL, como `/psicologos` ou `/consultas`, e o que se faz com o recurso é definido pelo verbo HTTP da requisição, GET, POST, PUT e DELETE. O resultado de cada chamada é informado por um código de status HTTP, de modo que quem chama (um BFF ou o orquestrador da SAGA) sabe se deu certo ou o que deu errado sem precisar interpretar texto.
+Toda a comunicação síncrona da BEDARCE é feita por APIs REST sobre HTTP com JSON, ou seja, cada elemento do negócio (um psicólogo, uma consulta, uma trilha, uma postagem) é tratado como um recurso identificado por uma URL, como `/psicologos` ou `/consultas`, e o que se faz com o recurso é definido pelo verbo HTTP da requisição, `GET`, `POST`, `PUT`, e `DELETE`. O resultado de cada chamada é informado por um código de status HTTP, de modo que quem chama (um BFF ou o orquestrador da SAGA) sabe se deu certo ou o que deu errado sem precisar interpretar texto.
+
+### Como uma requisição percorre o sistema
+
+1. O cliente em React envia uma requisição para o Gateway contendo o token de autenticação.
+2. O Gateway valida o token e encaminha a chamada para o BFF correspondente (`bff-portal` ou `bff-admin`).
+3. O BFF executa chamadas paralelas aos microsserviços necessários, agrega as respostas, formata os dados e retorna ao cliente.
+4. Se um microsserviço secundário falhar, o BFF implementa tolerância a falhas retornando uma resposta parcial com aviso, em vez de quebrar a aplicação inteira.
  
 ### Tipos de Acesso das Rotas
  
@@ -328,11 +341,133 @@ As tabelas abaixo trazem todas as rotas de cada microserviço, com os caminhos r
  
 #### Microserviço de Usuários
 
+| Método | Rota | O que faz | Quem chama | Tipo | Respostas |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/v1/auth/registro` | Cria a conta (apostador, familiar ou psicólogo) | `bff-portal` | Pública | 201; 400, 409 |
+| POST | `/v1/auth/login` | Autentica e devolve o token | `bff-portal` e `bff-admin` | Pública | 200; 401 |
+| GET | `/v1/usuarios/me` | Perfil do próprio usuário | `bff-portal` | Pública | 200; 401 |
+| PUT | `/v1/usuarios/me` | Altera apelido e descrição (só o próprio) | `bff-portal` | Pública | 200; 400 |
+| GET | `/v1/usuarios/{id}/perfil-publico` | Apelido, descrição e tipos de qualquer usuário | `bff-portal` | Pública | 200; 404 |
+| GET | `/v1/usuarios` | Lista usuários (filtros por tipo, situação e lista de ids) | `bff-admin` | Admin | 200; 403 |
+| GET | `/v1/usuarios/{id}` | Detalhe de um usuário | `bff-admin` | Admin | 200; 403, 404 |
+| GET | `/v1/usuarios/estatisticas` | Totais por tipo e por situação | `bff-admin` | Admin | 200; 403 |
+| PUT | `/v1/internal/sagas/{sagaId}/papel-mentor` | Passo da SAGA: adiciona o tipo MENTOR | `gamificacao-service` | Interna da SAGA | 200; 404 |
+| DELETE | `/v1/internal/sagas/{sagaId}/papel-mentor` | Compensação SAGA: remove o tipo MENTOR | `gamificacao-service` | Interna da SAGA | 204 |
+
+
 #### Microserviço de Atendimento
 
+| Método | Rota | O que faz | Quem chama | Tipo | Respostas |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/v1/psicologos` | Cria o perfil profissional (nasce PENDENTE) | `bff-portal` | Pública | 201; 400, 403, 409 |
+| GET | `/v1/psicologos` | Busca psicólogos (portal: só aprovados; admin: filtra por situação) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 400 |
+| GET | `/v1/psicologos/{id}` | Detalhe do psicólogo, com links HATEOAS | `bff-portal` e `bff-admin` | Pública e Admin | 200; 404 |
+| PUT | `/v1/psicologos/{id}` | Atualiza o perfil (só o dono) | `bff-portal` | Pública | 200; 400, 403, 404 |
+| PUT | `/v1/psicologos/{id}/status` | Aprova ou suspende o psicólogo | `bff-admin` | Admin | 200; 400, 403, 404, 409 |
+| GET | `/v1/psicologos/estatisticas` | Totais por situação | `bff-admin` | Admin | 200; 403 |
+| POST | `/v1/psicologos/{id}/publicacoes` | Publica projeto ou caso de sucesso | `bff-portal` | Pública | 201; 400, 403, 404 |
+| GET | `/v1/psicologos/{id}/publicacoes` | Lista as publicações de um psicólogo | `bff-portal` | Pública | 200; 404 |
+| DELETE | `/v1/publicacoes/{id}` | Remove uma publicação (autor ou admin) | `bff-portal` e `bff-admin` | Pública e Admin | 204; 403, 404 |
+| PUT | `/v1/psicologos/{id}/disponibilidade` | Define os horários semanais | `bff-portal` | Pública | 200; 400, 403, 404 |
+| GET | `/v1/psicologos/{id}/horarios` | Horários livres em um período | `bff-portal` | Pública | 200; 400, 404 |
+| POST | `/v1/consultas` | Agenda uma consulta | `bff-portal` | Pública | 201; 400, 403, 404, 409 (horário ocupado) |
+| GET | `/v1/consultas` | Minhas consultas (o admin vê todas) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 401 |
+| GET | `/v1/consultas/{id}` | Detalhe da consulta, com links HATEOAS | `bff-portal` e `bff-admin` | Pública e Admin | 200; 403, 404 |
+| POST | `/v1/consultas/{id}/confirmacao` | O psicólogo confirma | `bff-portal` | Pública | 200; 403, 404, 409 |
+| POST | `/v1/consultas/{id}/cancelamento` | Paciente ou psicólogo cancela | `bff-portal` | Pública | 200; 403, 404, 409 |
+| POST | `/v1/consultas/{id}/conclusao` | O psicólogo conclui (gera o evento para a Gamificação) | `bff-portal` | Pública | 200; 403, 404, 409 |
+| POST | `/v1/consultas/{id}/notas` | Registra a nota de acompanhamento | `bff-portal` | Pública | 201; 400, 403, 404, 409 |
+| GET | `/v1/pacientes/{usuarioId}/notas` | Notas sobre um paciente (psicólogo autor ou admin) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 403 |
+
+A consulta passa por SOLICITADA, CONFIRMADA e CONCLUIDA, e pode ser CANCELADA a partir de SOLICITADA ou CONFIRMADA, e qualquer transição fora desse caminho responde 409.
+
+
 #### Microserviço de Gamificação
+Aqui está a versão atualizada e expandida da tabela do **Microsserviço de Gamificação**, incluindo o **CRUD completo para o gerenciamento de Trilhas e Etapas** pelo Administrador (via `bff-admin`), garantindo suporte à reordenação, inserção em qualquer posição (início, meio ou fim) e personalização total da jornada educacional:
+
+---
+
+#### Microsserviço de Gamificação
+
+| Método | Rota | O que faz | Quem chama | Tipo | Respostas |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/v1/trilhas` | Lista as trilhas ativas (filtro por público-alvo) | `bff-portal` e `bff-admin` | Pública e Admin | 200 |
+| POST | `/v1/trilhas` | **CRUD Admin:** Cria uma nova trilha de aprendizado | `bff-admin` | Admin | 201; 400, 403 |
+| GET | `/v1/trilhas/{id}` | Retorna a trilha com todas as suas etapas ordenadas | `bff-portal` e `bff-admin` | Pública e Admin | 200; 404 |
+| PUT | `/v1/trilhas/{id}` | **CRUD Admin:** Atualiza nome, descrição e público-alvo da trilha | `bff-admin` | Admin | 200; 400, 403, 404 |
+| DELETE | `/v1/trilhas/{id}` | **CRUD Admin:** Remove uma trilha e suas etapas desvinculadas | `bff-admin` | Admin | 204; 403, 404, 409 (em uso por usuários) |
+| POST | `/v1/trilhas/{id}/etapas` | **CRUD Admin:** Cria e insere uma nova etapa na posição desejada (início, meio ou fim da ordem) | `bff-admin` | Admin | 201; 400, 403, 404 |
+| GET | `/v1/etapas/{id}` | Conteúdo da etapa (o quiz vai sem o gabarito para pacientes) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 403 (etapa bloqueada), 404 |
+| PUT | `/v1/etapas/{id}` | **CRUD Admin:** Edita conteúdo, quiz, pontuação e ordem da etapa | `bff-admin` | Admin | 200; 400, 403, 404 |
+| POST | `/v1/etapas/{id}/conclusao` | **Comando:** conclui a etapa e devolve pontos ganhos, total e nível | `bff-portal` | Pública | 200; 400, 403, 404, 409 (já concluída) |
+| GET | `/v1/usuarios/me/progresso` | **Consulta no modelo de leitura:** resumo do próprio progresso | `bff-portal` | Pública | 200; 401 |
+| GET | `/v1/usuarios/{id}/nivel` | Nível e pontos de qualquer usuário (perfil público) | `bff-portal` | Pública | 200; 404 |
+| GET | `/v1/usuarios/{id}/progresso` | Resumo completo de um usuário | `bff-admin` | Admin | 200; 403, 404 |
+| GET | `/v1/estatisticas/niveis` | Quantos usuários há em cada nível | `bff-admin` | Admin | 200; 403 |
+| GET | `/v1/candidatos-mentor` | Usuários aptos a serem mentores | `bff-admin` | Admin | 200; 403 |
+| POST | `/v1/promocoes-mentor` | Inicia a SAGA de promoção a mentor | `bff-admin` | Admin | 202; 400, 403, 404, 409 (não apto, já é mentor ou promoção em andamento) |
+| GET | `/v1/promocoes-mentor/{id}` | Estado da SAGA e de cada passo | `bff-admin` | Admin | 200; 403, 404 |
+| GET | `/v1/promocoes-mentor` | Lista as promoções (filtro por situação) | `bff-admin` | Admin | 200; 403 |
+| POST | `/v1/internal/eventos` | Recebe o evento «consulta concluída» | `atendimento-service` | Interna de evento | 202 (aceito ou já recebido); 400 |
 
 #### Microserviço de Comunidade
+
+| Método | Rota | O que faz | Quem chama | Tipo | Respostas |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/v1/mentores` | Lista mentores (portal: ativos; admin: filtra por situação) | `bff-portal` e `bff-admin` | Pública e Admin | 200 |
+| GET | `/v1/mentores/{usuarioId}` | Perfil do mentor | `bff-portal` | Pública | 200; 404 |
+| PUT | `/v1/mentores/me` | O mentor edita o próprio perfil | `bff-portal` | Pública | 200; 400, 403 |
+| PUT | `/v1/mentores/{usuarioId}/status` | Define o mentor como ativo, inativo ou impedido | `bff-admin` | Admin | 200; 400, 403, 404 |
+| GET | `/v1/mentores/estatisticas` | Totais por situação | `bff-admin` | Admin | 200; 403 |
+| POST | `/v1/relatos` | Publica um relato (só mentor) | `bff-portal` | Pública | 201; 400, 403 |
+| GET | `/v1/relatos` | Lista relatos (filtros por tag e autor) | `bff-portal` | Pública | 200 |
+| GET | `/v1/relatos/{id}` | Lê um relato | `bff-portal` | Pública | 200; 404 |
+| PUT | `/v1/relatos/{id}` | Edita o relato (autor) | `bff-portal` | Pública | 200; 400, 403, 404 |
+| DELETE | `/v1/relatos/{id}` | Remove o relato (autor ou admin) | `bff-portal` e `bff-admin` | Pública e Admin | 204; 403, 404 |
+| POST | `/v1/grupos` | Cria um grupo de apoio (só mentor) | `bff-portal` | Pública | 201; 400, 403 |
+| GET | `/v1/grupos` | Lista grupos | `bff-portal` e `bff-admin` | Pública e Admin | 200 |
+| GET | `/v1/grupos/{id}` | Detalhe do grupo | `bff-portal` | Pública | 200; 404 |
+| POST | `/v1/grupos/{id}/participantes` | Entra no grupo | `bff-portal` | Pública | 201; 404, 409 (já participa ou lotado) |
+| DELETE | `/v1/grupos/{id}/participantes/me` | Sai do grupo | `bff-portal` | Pública | 204; 404 |
+| GET | `/v1/usuarios/{id}/grupos` | Grupos de que um usuário participa (perfil público) | `bff-portal` | Pública | 200; 404 |
+| POST | `/v1/grupos/{id}/encontros` | Agenda encontro ou palestra (mentor dono do grupo) | `bff-portal` | Pública | 201; 400, 403, 404 |
+| GET | `/v1/encontros` | Próximos encontros | `bff-portal` | Pública | 200 |
+| POST | `/v1/encontros/{id}/inscricoes` | Inscreve o usuário | `bff-portal` | Pública | 201; 404, 409 (lotado ou já inscrito) |
+| DELETE | `/v1/encontros/{id}/inscricoes/me` | Cancela a inscrição | `bff-portal` | Pública | 204; 404 |
+| POST | `/v1/conversas` | Abre (ou recupera) a conversa privada com um mentor | `bff-portal` | Pública | 201 ou 200; 400, 404 |
+| GET | `/v1/conversas` | Minhas conversas, privadas e de grupos | `bff-portal` | Pública | 200 |
+| GET | `/v1/conversas/{id}/mensagens` | Mensagens de uma conversa | `bff-portal` | Pública | 200; 403, 404 |
+| POST | `/v1/conversas/{id}/mensagens` | Envia uma mensagem | `bff-portal` | Pública | 201; 400, 403 |
+| POST | `/v1/pedidos-apoio` | Botão de pânico: registra o pedido de apoio | `bff-portal` | Pública | 201 |
+| GET | `/v1/pedidos-apoio` | Pedidos de apoio pendentes | `bff-portal` (mentor) e `bff-admin` | Admin e mentor | 200; 403 |
+| POST | `/v1/pedidos-apoio/{id}/atendimento` | Registra o primeiro atendimento ao pedido | `bff-portal` (mentor) e `bff-admin` | Admin e mentor | 200; 403, 404, 409 |
+| PUT | `/v1/internal/sagas/{sagaId}/perfil-mentor` | **Passo da SAGA (pivô):** cria o perfil de mentor | `gamificacao-service` | Interna da SAGA | 201 (criado) ou 200 (já criado por esta SAGA); 409 (usuário impedido) |
+
+
+## HATEOAS
+
+O conceito de HATEOAS será aplicado nos recursos de consulta e psicólogo do microsserviço de atendimento com o propósito principal de guiar dinamicamente o comportamento e a navegação da aplicação cliente. Na prática, em vez de a API retornar apenas os dados estáticos de um registro, ela entregará em conjunto um bloco exclusivo de links de navegação, na qual esses links serão gerados dinamicamente em tempo de execução, adaptando-se tanto ao estado atual da consulta (como `SOLICITADA` ou `CONCLUIDA`) quanto ao perfil do usuário autenticado (seja um psicólogo ou um paciente). Com essa implementação, o front-end não precisará mais calcular regras de negócio complexas para saber quais botões exibir ou construir URLs manualmente para cada endpoint, tornando a aplicação mais inteligente e conectada diretamente às permissões do servidor.
+
+Assim, o objetivo central será centralizar toda a lógica de permissões e fluxo de trabalho no servidor, garantindo que a interface do usuário exiba estritamente as ações que o sistema autoriza para aquele momento específico. Por exemplo, quando um psicólogo abrir os detalhes de uma consulta recém-criada (com o status `SOLICITADA`), o microsserviço entregará não só os dados do atendimento, mas também o caminho para ler o próprio registro, acessar o perfil do psicólogo e executar ações em `POST` para confirmar ou cancelar a sessão.
+
+Abaixo está o exemplo prático da estrutura JSON que será retornada pela API do `atendimento-service` para essa situação:
+
+```json
+{
+  "id": "c-9f1c",
+  "status": "SOLICITADA",
+  "data": "2026-10-25T14:00:00Z",
+  "_links": {
+    "self": { "href": "/v1/consultas/c-9f1c", "method": "GET" },
+    "psicologo": { "href": "/v1/psicologos/p-12", "method": "GET" },
+    "confirmar": { "href": "/v1/consultas/c-9f1c/confirmacao", "method": "POST" },
+    "cancelar": { "href": "/v1/consultas/c-9f1c/cancelamento", "method": "POST" }
+  }
+}
+
+```
+
+Esse sistema faz a adaptação da interface conforme o ciclo de vida avança, ou seja, quando uma consulta mudar para o status `CONCLUIDA`, ou quando a mesma tela for acessada por um paciente em vez de um profissional, o conjunto de links no JSON será alterado automaticamente pela API. Para o paciente, por exemplo, as rotas de confirmação de atendimento fornecidas ao psicólogo deixarão de existir, exibindo apenas as alternativas permitidas para o seu escopo, dessa forma, o projeto garantirá um front-end totalmente desacoplado, flexível e imune a quebras ou falhas de segurança caso ocorram alterações estruturais nas rotas dos microsserviços no futuro.
 
 ---
 
