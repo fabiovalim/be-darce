@@ -304,14 +304,14 @@ Cada microsserviço expõe contratos de API REST sobre HTTP retornando dados em 
  
 ### Como a API REST Funciona na BEDARCE
  
-Toda a comunicação síncrona da BEDARCE é feita por APIs REST sobre HTTP com JSON, ou seja, cada elemento do negócio (um psicólogo, uma consulta, uma trilha, uma postagem) é tratado como um recurso identificado por uma URL, como `/psicologos` ou `/consultas`, e o que se faz com o recurso é definido pelo verbo HTTP da requisição, `GET`, `POST`, `PUT`, e `DELETE`. O resultado de cada chamada é informado por um código de status HTTP, de modo que quem chama (um BFF ou o orquestrador da SAGA) sabe se deu certo ou o que deu errado sem precisar interpretar texto.
+Toda a comunicação síncrona da BEDARCE é feita por APIs REST sobre HTTP com retorno em JSON, ou seja, cada elemento do negócio (um psicólogo, uma consulta, uma trilha, uma postagem) é tratado como um recurso identificado por uma URL, como `/psicologos` ou `/consultas`, e o que se faz com o recurso é definido pelo verbo HTTP da requisição, `GET`, `POST`, `PUT`, e `DELETE`. O resultado de cada chamada é informado por um código de status HTTP, de modo que quem chama (um BFF ou o orquestrador da SAGA) sabe se deu certo ou o que deu errado sem precisar interpretar texto.
 
 ### Como uma requisição percorre o sistema
 
-1. O cliente em React envia uma requisição para o Gateway contendo o token de autenticação.
+1. O cliente envia uma requisição para o Gateway contendo o token de autenticação.
 2. O Gateway valida o token e encaminha a chamada para o BFF correspondente (`bff-portal` ou `bff-admin`).
 3. O BFF executa chamadas paralelas aos microsserviços necessários, agrega as respostas, formata os dados e retorna ao cliente.
-4. Se um microsserviço secundário falhar, o BFF implementa tolerância a falhas retornando uma resposta parcial com aviso, em vez de quebrar a aplicação inteira.
+4. Se um microsserviço secundário falhar, o BFF ou o Gateway implementa tolerância a falhas retornando uma resposta parcial com aviso, em vez de quebrar a aplicação inteira.
  
 ### Tipos de Acesso das Rotas
  
@@ -345,49 +345,47 @@ O código de status é a parte da resposta que diz se a chamada deu certo e, qua
 A versão da API fica na própria URL, no formato `/v1/consultas`, e na BEDARCE todas as rotas nascem e permanecem na versão `v1`, os front-ends chamam `/portal/v1/...` e `/admin/v1/...` no gateway, e os BFFs chamam `/v1/...` nos microserviços. A versão `v2` não existe agora, ela só será criada se algum dia for preciso fazer uma mudança incompatível, como remover ou renomear um campo, mudar o significado de um campo ou tornar obrigatório algo que era opcional, nesse caso a `v2` entra no ar ao lado da `v1`, que continua funcionando por um prazo anunciado e passa a avisar nas suas respostas que será descontinuada, de modo que os clientes antigos não quebram de uma hora para a outra, mas mudanças compatíveis, como acrescentar um campo opcional ou uma rota nova, continuam na `v1`.
  
  
-### Contrato dos Microserviços
- 
-As tabelas abaixo trazem todas as rotas de cada microserviço, com os caminhos relativos ao próprio serviço (por exemplo, `/v1/consultas`). Assim, a coluna Acesso indica quem pode chamar a rota, conforme a tabela de tipos de acesso, a coluna Sucesso traz o código de quando tudo dá certo e a coluna Erros explica o que cada código significa naquela rota.
- 
-#### Microserviço de Usuários
+### Contrato dos Microsserviços
+
+As tabelas abaixo apresentam todas as rotas de cada microsserviço, com os caminhos relativos ao próprio serviço (por exemplo, `/v1/consultas`). A coluna Tipo indica quem tem permissão para chamar a rota, conforme a classificação de tipos de acesso; a coluna Respostas descreve os códigos de status HTTP de sucesso e de erro retornados em cada cenário.
+
+#### Microsserviço de Usuários
 
 | Método | Rota | O que faz | Quem chama | Tipo | Respostas |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/v1/auth/registro` | Cria a conta (apostador, familiar ou psicólogo) | `bff-portal` | Pública | 201; 400, 409 |
 | POST | `/v1/auth/login` | Autentica e devolve o token | `bff-portal` e `bff-admin` | Pública | 200; 401 |
-| GET | `/v1/usuarios/me` | Perfil do próprio usuário | `bff-portal` | Pública | 200; 401 |
-| PUT | `/v1/usuarios/me` | Altera apelido e descrição (só o próprio) | `bff-portal` | Pública | 200; 400 |
-| GET | `/v1/usuarios/{id}/perfil-publico` | Apelido, descrição e tipos de qualquer usuário | `bff-portal` | Pública | 200; 404 |
-| GET | `/v1/usuarios` | Lista usuários (filtros por tipo, situação e lista de ids) | `bff-admin` | Admin | 200; 403 |
-| GET | `/v1/usuarios/{id}` | Detalhe de um usuário | `bff-admin` | Admin | 200; 403, 404 |
-| GET | `/v1/usuarios/estatisticas` | Totais por tipo e por situação | `bff-admin` | Admin | 200; 403 |
-| PUT | `/v1/internal/sagas/{sagaId}/papel-mentor` | Passo da SAGA: adiciona o tipo MENTOR | `gamificacao-service` | Interna da SAGA | 200; 404 |
-| DELETE | `/v1/internal/sagas/{sagaId}/papel-mentor` | Compensação SAGA: remove o tipo MENTOR | `gamificacao-service` | Interna da SAGA | 204 |
+| GET | `/v1/usuarios/me` | Perfil do próprio usuário | `bff-portal` | Logado | 200; 401 |
+| PUT | `/v1/usuarios/me` | Altera apelido e descrição (só o próprio) | `bff-portal` | Logado | 200; 400 |
+| GET | `/v1/usuarios/{id}/perfil-publico` | Apelido, descrição e tipos de qualquer usuário | `bff-portal` | Psicólogo, Mentor ou Administrador | 200; 404 |
+| GET | `/v1/usuarios` | Lista usuários (filtros por tipo, situação e lista de ids) | `bff-admin` | Administrador | 200; 403 |
+| GET | `/v1/usuarios/{id}` | Detalhe de um usuário | `bff-admin` | Administrador | 200; 403, 404 |
+| GET | `/v1/usuarios/estatisticas` | Totais por tipo e por situação | `bff-admin` | Administrador | 200; 403 |
+| PUT | `/v1/internal/sagas/{sagaId}/papel-mentor` | Passo da SAGA: adiciona o tipo MENTOR | `gamificacao-service` | Interna | 200; 404 |
+| DELETE | `/v1/internal/sagas/{sagaId}/papel-mentor` | Compensação SAGA: remove o tipo MENTOR | `gamificacao-service` | Interna | 204 |
 
 
 #### Microserviço de Atendimento
 
 | Método | Rota | O que faz | Quem chama | Tipo | Respostas |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/v1/psicologos` | Cria o perfil profissional (nasce PENDENTE) | `bff-portal` | Pública | 201; 400, 403, 409 |
-| GET | `/v1/psicologos` | Busca psicólogos (portal: só aprovados; admin: filtra por situação) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 400 |
-| GET | `/v1/psicologos/{id}` | Detalhe do psicólogo, com links HATEOAS | `bff-portal` e `bff-admin` | Pública e Admin | 200; 404 |
-| PUT | `/v1/psicologos/{id}` | Atualiza o perfil (só o dono) | `bff-portal` | Pública | 200; 400, 403, 404 |
-| PUT | `/v1/psicologos/{id}/status` | Aprova ou suspende o psicólogo | `bff-admin` | Admin | 200; 400, 403, 404, 409 |
-| GET | `/v1/psicologos/estatisticas` | Totais por situação | `bff-admin` | Admin | 200; 403 |
-| POST | `/v1/psicologos/{id}/publicacoes` | Publica projeto ou caso de sucesso | `bff-portal` | Pública | 201; 400, 403, 404 |
-| GET | `/v1/psicologos/{id}/publicacoes` | Lista as publicações de um psicólogo | `bff-portal` | Pública | 200; 404 |
-| DELETE | `/v1/publicacoes/{id}` | Remove uma publicação (autor ou admin) | `bff-portal` e `bff-admin` | Pública e Admin | 204; 403, 404 |
-| PUT | `/v1/psicologos/{id}/disponibilidade` | Define os horários semanais | `bff-portal` | Pública | 200; 400, 403, 404 |
-| GET | `/v1/psicologos/{id}/horarios` | Horários livres em um período | `bff-portal` | Pública | 200; 400, 404 |
-| POST | `/v1/consultas` | Agenda uma consulta | `bff-portal` | Pública | 201; 400, 403, 404, 409 (horário ocupado) |
-| GET | `/v1/consultas` | Minhas consultas (o admin vê todas) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 401 |
-| GET | `/v1/consultas/{id}` | Detalhe da consulta, com links HATEOAS | `bff-portal` e `bff-admin` | Pública e Admin | 200; 403, 404 |
-| POST | `/v1/consultas/{id}/confirmacao` | O psicólogo confirma | `bff-portal` | Pública | 200; 403, 404, 409 |
-| POST | `/v1/consultas/{id}/cancelamento` | Paciente ou psicólogo cancela | `bff-portal` | Pública | 200; 403, 404, 409 |
-| POST | `/v1/consultas/{id}/conclusao` | O psicólogo conclui (gera o evento para a Gamificação) | `bff-portal` | Pública | 200; 403, 404, 409 |
+| GET | `/v1/psicologos` | Busca psicólogos (portal: só aprovados; admin: filtra por situação) | `bff-portal` e `bff-admin` | Logado e Administrador | 200; 400 |
+| GET | `/v1/psicologos/{id}` | Detalhe do psicólogo | `bff-portal` e `bff-admin` | Logado | 200; 404 |
+| PUT | `/v1/psicologos/{id}` | Atualiza o perfil (só o dono) | `bff-portal` | Psicólogo | 200; 400, 403, 404 |
+| PUT | `/v1/psicologos/{id}/status` | Aprova ou suspende o psicólogo | `bff-admin` | Administrador | 200; 400, 403, 404, 409 |
+| GET | `/v1/psicologos/estatisticas` | Totais por situação | `bff-admin` | Administrador | 200; 403 |
+| POST | `/v1/psicologos/{id}/publicacoes` | Publica projeto ou caso de sucesso | `bff-portal` | Psicólogo | 201; 400, 403, 404 |
+| GET | `/v1/psicologos/{id}/publicacoes` | Lista as publicações de um psicólogo | `bff-portal` | Logado | 200; 404 |
+| DELETE | `/v1/publicacoes/{id}` | Remove uma publicação (autor ou admin) | `bff-portal` e `bff-admin` | Psicólogo e Administrador | 204; 403, 404 |
+| PUT | `/v1/psicologos/{id}/disponibilidade` | Define os horários semanais | `bff-portal` | Psicólogo | 200; 400, 403, 404 |
+| GET | `/v1/psicologos/{id}/horarios` | Horários livres em um período | `bff-portal` | Logado | 200; 400, 404 |
+| POST | `/v1/consultas` | Agenda uma consulta | `bff-portal` | Psicólogo ou Mentor | 201; 400, 403, 404, 409 (horário ocupado) |
+| GET | `/v1/consultas` | Minhas consultas (privado, mas o admin vê todas) | `bff-portal` e `bff-admin` | Logado | 200; 401 |
+| GET | `/v1/consultas/{id}` | Detalhe da consulta (privado, mas o admin vê todas) | `bff-portal` e `bff-admin` | Logado | 200; 403, 404 |
+| POST | `/v1/consultas/{id}/confirmacao` | O psicólogo confirma | `bff-portal` | Psicólogo | 200; 403, 404, 409 |
+| POST | `/v1/consultas/{id}/cancelamento` | Paciente ou psicólogo cancela | `bff-portal` | Paciente e Psicólogo | 200; 403, 404, 409 |
 | POST | `/v1/consultas/{id}/notas` | Registra a nota de acompanhamento | `bff-portal` | Pública | 201; 400, 403, 404, 409 |
-| GET | `/v1/pacientes/{usuarioId}/notas` | Notas sobre um paciente (psicólogo autor ou admin) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 403 |
+| GET | `/v1/pacientes/{usuarioId}/notas` | Notas sobre um paciente (psicólogo autor ou admin) | `bff-portal` e `bff-admin` | Psicólogo e Administrador | 200; 403 |
 
 A consulta passa por SOLICITADA, CONFIRMADA e CONCLUIDA, e pode ser CANCELADA a partir de SOLICITADA ou CONFIRMADA, e qualquer transição fora desse caminho responde 409.
 
@@ -401,57 +399,51 @@ Aqui está a versão atualizada e expandida da tabela do **Microsserviço de Gam
 
 | Método | Rota | O que faz | Quem chama | Tipo | Respostas |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/v1/trilhas` | Lista as trilhas ativas (filtro por público-alvo) | `bff-portal` e `bff-admin` | Pública e Admin | 200 |
-| POST | `/v1/trilhas` | **CRUD Admin:** Cria uma nova trilha de aprendizado | `bff-admin` | Admin | 201; 400, 403 |
-| GET | `/v1/trilhas/{id}` | Retorna a trilha com todas as suas etapas ordenadas | `bff-portal` e `bff-admin` | Pública e Admin | 200; 404 |
-| PUT | `/v1/trilhas/{id}` | **CRUD Admin:** Atualiza nome, descrição e público-alvo da trilha | `bff-admin` | Admin | 200; 400, 403, 404 |
-| DELETE | `/v1/trilhas/{id}` | **CRUD Admin:** Remove uma trilha e suas etapas desvinculadas | `bff-admin` | Admin | 204; 403, 404, 409 (em uso por usuários) |
-| POST | `/v1/trilhas/{id}/etapas` | **CRUD Admin:** Cria e insere uma nova etapa na posição desejada (início, meio ou fim da ordem) | `bff-admin` | Admin | 201; 400, 403, 404 |
-| GET | `/v1/etapas/{id}` | Conteúdo da etapa (o quiz vai sem o gabarito para pacientes) | `bff-portal` e `bff-admin` | Pública e Admin | 200; 403 (etapa bloqueada), 404 |
-| PUT | `/v1/etapas/{id}` | **CRUD Admin:** Edita conteúdo, quiz, pontuação e ordem da etapa | `bff-admin` | Admin | 200; 400, 403, 404 |
-| POST | `/v1/etapas/{id}/conclusao` | **Comando:** conclui a etapa e devolve pontos ganhos, total e nível | `bff-portal` | Pública | 200; 400, 403, 404, 409 (já concluída) |
-| GET | `/v1/usuarios/me/progresso` | **Consulta no modelo de leitura:** resumo do próprio progresso | `bff-portal` | Pública | 200; 401 |
-| GET | `/v1/usuarios/{id}/nivel` | Nível e pontos de qualquer usuário (perfil público) | `bff-portal` | Pública | 200; 404 |
-| GET | `/v1/usuarios/{id}/progresso` | Resumo completo de um usuário | `bff-admin` | Admin | 200; 403, 404 |
-| GET | `/v1/estatisticas/niveis` | Quantos usuários há em cada nível | `bff-admin` | Admin | 200; 403 |
-| GET | `/v1/candidatos-mentor` | Usuários aptos a serem mentores | `bff-admin` | Admin | 200; 403 |
-| POST | `/v1/promocoes-mentor` | Inicia a SAGA de promoção a mentor | `bff-admin` | Admin | 202; 400, 403, 404, 409 (não apto, já é mentor ou promoção em andamento) |
-| GET | `/v1/promocoes-mentor/{id}` | Estado da SAGA e de cada passo | `bff-admin` | Admin | 200; 403, 404 |
-| GET | `/v1/promocoes-mentor` | Lista as promoções (filtro por situação) | `bff-admin` | Admin | 200; 403 |
-| POST | `/v1/internal/eventos` | Recebe o evento «consulta concluída» | `atendimento-service` | Interna de evento | 202 (aceito ou já recebido); 400 |
+| GET | `/v1/trilhas` | Lista as trilhas ativas (filtro por público-alvo) | `bff-portal` e `bff-admin` | Paciente e Administrador | 200 |
+| POST | `/v1/trilhas` | **CRUD Admin:** Cria uma nova trilha de aprendizado | `bff-admin` | Administrador | 201; 400, 403 |
+| GET | `/v1/trilhas/{id}` | Retorna a trilha com todas as suas etapas ordenadas | `bff-portal` e `bff-admin` | Paciente e Administrador | 200; 404 |
+| PUT | `/v1/trilhas/{id}` | **CRUD Admin:** Atualiza nome, descrição e público-alvo da trilha | `bff-admin` | Administrador | 200; 400, 403, 404 |
+| DELETE | `/v1/trilhas/{id}` | **CRUD Admin:** Remove uma trilha e suas etapas desvinculadas | `bff-admin` | Administrador | 204; 403, 404, 409 (em uso por usuários) |
+| POST | `/v1/trilhas/{id}/etapas` | **CRUD Admin:** Cria e insere uma nova etapa na posição desejada (início, meio ou fim da ordem) | `bff-admin` | Administrador | 201; 400, 403, 404 |
+| GET | `/v1/trilhas/{id}/etapas/{id}` | Conteúdo da etapa | `bff-portal` e `bff-admin` | Paciente e Administrador | 200; 403 (etapa bloqueada), 404 |
+| PUT | `/v1/trilhas/{id}/etapas/{id}` | **CRUD Admin:** Edita conteúdo, quiz, pontuação e ordem da etapa | `bff-admin` | Administrador | 200; 400, 403, 404 |
+| POST | `/v1/etapas/{id}/conclusao` | **Comando:** conclui a etapa e devolve pontos ganhos, total e nível | `bff-portal` | Paciente | 200; 400, 403, 404, 409 (já concluída) |
+| GET | `/v1/usuarios/me/progresso` | **Consulta no modelo de leitura:** resumo do próprio progresso | `bff-portal` | Paciente | 200; 401 |
+| GET | `/v1/usuarios/{id}/nivel` | Nível e pontos de qualquer usuário (perfil público) | `bff-portal` | Logado | 200; 404 |
+| GET | `/v1/usuarios/{id}/progresso` | Resumo completo de um usuário | `bff-admin` | Administrador | 200; 403, 404 |
+| GET | `/v1/estatisticas/niveis` | Quantos usuários há em cada nível | `bff-admin` | Administrador | 200; 403 |
+| POST | `/v1/promocoes-mentor` | Inicia a SAGA de promoção a mentor | `bff-admin` | Psicólogo e Administrador | 202; 400, 403, 404, 409 (não apto, já é mentor ou promoção em andamento) |
+| GET | `/v1/promocoes-mentor/{id}` | Estado da SAGA e de cada passo | `bff-admin` | Administrador | 200; 403, 404 |
+| GET | `/v1/promocoes-mentor` | Lista as promoções (filtro por situação) | `bff-admin` | Administrador | 200; 403 |
+| POST | `/v1/internal/eventos` | Recebe o evento de consulta concluída | `atendimento-service` | Interna | 200; 202; 400 |
 
 #### Microserviço de Comunidade
 
 | Método | Rota | O que faz | Quem chama | Tipo | Respostas |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/v1/mentores` | Lista mentores (portal: ativos; admin: filtra por situação) | `bff-portal` e `bff-admin` | Pública e Admin | 200 |
-| GET | `/v1/mentores/{usuarioId}` | Perfil do mentor | `bff-portal` | Pública | 200; 404 |
-| PUT | `/v1/mentores/me` | O mentor edita o próprio perfil | `bff-portal` | Pública | 200; 400, 403 |
-| PUT | `/v1/mentores/{usuarioId}/status` | Define o mentor como ativo, inativo ou impedido | `bff-admin` | Admin | 200; 400, 403, 404 |
-| GET | `/v1/mentores/estatisticas` | Totais por situação | `bff-admin` | Admin | 200; 403 |
-| POST | `/v1/relatos` | Publica um relato (só mentor) | `bff-portal` | Pública | 201; 400, 403 |
-| GET | `/v1/relatos` | Lista relatos (filtros por tag e autor) | `bff-portal` | Pública | 200 |
-| GET | `/v1/relatos/{id}` | Lê um relato | `bff-portal` | Pública | 200; 404 |
-| PUT | `/v1/relatos/{id}` | Edita o relato (autor) | `bff-portal` | Pública | 200; 400, 403, 404 |
-| DELETE | `/v1/relatos/{id}` | Remove o relato (autor ou admin) | `bff-portal` e `bff-admin` | Pública e Admin | 204; 403, 404 |
-| POST | `/v1/grupos` | Cria um grupo de apoio (só mentor) | `bff-portal` | Pública | 201; 400, 403 |
-| GET | `/v1/grupos` | Lista grupos | `bff-portal` e `bff-admin` | Pública e Admin | 200 |
-| GET | `/v1/grupos/{id}` | Detalhe do grupo | `bff-portal` | Pública | 200; 404 |
-| POST | `/v1/grupos/{id}/participantes` | Entra no grupo | `bff-portal` | Pública | 201; 404, 409 (já participa ou lotado) |
-| DELETE | `/v1/grupos/{id}/participantes/me` | Sai do grupo | `bff-portal` | Pública | 204; 404 |
-| GET | `/v1/usuarios/{id}/grupos` | Grupos de que um usuário participa (perfil público) | `bff-portal` | Pública | 200; 404 |
-| POST | `/v1/grupos/{id}/encontros` | Agenda encontro ou palestra (mentor dono do grupo) | `bff-portal` | Pública | 201; 400, 403, 404 |
-| GET | `/v1/encontros` | Próximos encontros | `bff-portal` | Pública | 200 |
-| POST | `/v1/encontros/{id}/inscricoes` | Inscreve o usuário | `bff-portal` | Pública | 201; 404, 409 (lotado ou já inscrito) |
-| DELETE | `/v1/encontros/{id}/inscricoes/me` | Cancela a inscrição | `bff-portal` | Pública | 204; 404 |
-| POST | `/v1/conversas` | Abre (ou recupera) a conversa privada com um mentor | `bff-portal` | Pública | 201 ou 200; 400, 404 |
-| GET | `/v1/conversas` | Minhas conversas, privadas e de grupos | `bff-portal` | Pública | 200 |
-| GET | `/v1/conversas/{id}/mensagens` | Mensagens de uma conversa | `bff-portal` | Pública | 200; 403, 404 |
-| POST | `/v1/conversas/{id}/mensagens` | Envia uma mensagem | `bff-portal` | Pública | 201; 400, 403 |
-| POST | `/v1/pedidos-apoio` | Botão de pânico: registra o pedido de apoio | `bff-portal` | Pública | 201 |
-| GET | `/v1/pedidos-apoio` | Pedidos de apoio pendentes | `bff-portal` (mentor) e `bff-admin` | Admin e mentor | 200; 403 |
-| POST | `/v1/pedidos-apoio/{id}/atendimento` | Registra o primeiro atendimento ao pedido | `bff-portal` (mentor) e `bff-admin` | Admin e mentor | 200; 403, 404, 409 |
-| PUT | `/v1/internal/sagas/{sagaId}/perfil-mentor` | **Passo da SAGA (pivô):** cria o perfil de mentor | `gamificacao-service` | Interna da SAGA | 201 (criado) ou 200 (já criado por esta SAGA); 409 (usuário impedido) |
+| GET | `/v1/mentores` | Lista mentores (portal: ativos; admin: filtra por situação) | `bff-portal` e `bff-admin` | Paciente e Administrador | 200 |
+| GET | `/v1/mentores/{usuarioId}` | Perfil do mentor | `bff-portal` | Logado | 200; 404 |
+| PUT | `/v1/mentores/me` | O mentor edita o próprio perfil | `bff-portal` | Mentor | 200; 400, 403 |
+| PUT | `/v1/mentores/{usuarioId}/status` | Define o mentor como ativo, inativo ou impedido | `bff-admin` | Administrador | 200; 400, 403, 404 |
+| GET | `/v1/mentores/estatisticas` | Totais por situação | `bff-admin` | Administrador | 200; 403 |
+| POST | `/v1/relatos` | Publica um relato | `bff-portal` | Mentor | 201; 400, 403 |
+| GET | `/v1/relatos` | Lista relatos (filtros por tag e autor) | `bff-portal` | Logado | 200 |
+| GET | `/v1/relatos/{id}` | Lê um relato | `bff-portal` | Logado | 200; 404 |
+| PUT | `/v1/relatos/{id}` | Edita o relato (autor) | `bff-portal` | Mentor | 200; 400, 403, 404 |
+| DELETE | `/v1/relatos/{id}` | Remove o relato (autor ou admin) | `bff-portal` e `bff-admin` | Mentor e Administrador | 204; 403, 404 |
+| POST | `/v1/grupos` | Cria um grupo de apoio | `bff-portal` | Mentor | 201; 400, 403 |
+| GET | `/v1/grupos` | Lista grupos | `bff-portal` e `bff-admin` | Logado | 200 |
+| GET | `/v1/grupos/{id}` | Detalhe do grupo | `bff-portal` | Logado | 200; 404 |
+| POST | `/v1/grupos/{id}/participantes` | Entra no grupo | `bff-portal` | Logado | 201; 404, 409 (já participa ou lotado) |
+| DELETE | `/v1/grupos/{id}/participantes/me` | Sai do grupo | `bff-portal` | Logado | 204; 404 |
+| GET | `/v1/usuarios/{id}/grupos` | Grupos de que um usuário participa (perfil público) | `bff-portal` | Logado | 200; 404 |
+| GET | `/v1/conversas` | Minhas conversas, privadas e de grupos (privado aos integrantes) | `bff-portal` | Logado | 200 |
+| GET | `/v1/conversas/{id}/mensagens` | Mensagens de uma conversa (privado aos integrantes) | `bff-portal` | Logado | 200; 403, 404 |
+| POST | `/v1/conversas/{id}/mensagens` | Envia uma mensagem (privado aos integrantes) | `bff-portal` | Logado | 201; 400, 403 |
+| POST | `/v1/pedidos-apoio` | Botão de pânico: registra o pedido de apoio | `bff-portal` | Paciente | 201 |
+| GET | `/v1/pedidos-apoio` | Pedidos de apoio pendentes | `bff-portal` (mentor) e `bff-admin` | Psicólogo, Mentor e Administrador | 200; 403 |
+| POST | `/v1/pedidos-apoio/{id}/atendimento` | Registra o primeiro atendimento ao pedido | `bff-portal` (mentor) e `bff-admin` | Psicólogo, Mentor e Administrador | 200; 403, 404, 409 |
+| PUT | `/v1/internal/sagas/{sagaId}/perfil-mentor` | Passo da SAGA (pivô): cria o perfil de mentor | `gamificacao-service` | Interna | 201 (criado) ou 200 (já criado por esta SAGA); 409 (usuário impedido) |
 
 
 ## HATEOAS
