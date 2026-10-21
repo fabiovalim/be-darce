@@ -275,6 +275,18 @@ O microsserviço de comunidade centraliza as interações de apoio mútuo e enga
 
 ## Padrão Database per Service, Outbox e Relay
 
+### Tecnologia de banco por serviço
+
+| Serviço | Banco | Justificativa |
+| --- | --- | --- |
+| Usuários | PostgreSQL | Dados relacionais e sensíveis (credenciais, papéis) que exigem integridade e restrições de unicidade, como e-mail. |
+| Atendimento | PostgreSQL | Agenda e consultas precisam de transações e restrições que impeçam dois agendamentos no mesmo horário (resposta 409). Também guarda o estado da SAGA. |
+| Gamificação (escrita) | PostgreSQL | O modelo de escrita valida pré-requisitos e grava pontos de forma transacional. |
+| Gamificação (leitura) | MongoDB | O modelo de leitura guarda documentos de progresso já pré-calculados, otimizados para consulta instantânea. |
+| Comunidade | MongoDB | Relatos, postagens, grupos e mensagens são documentos com estrutura flexível e leitura frequente. |
+
+A escolha poliglota segue a natureza dos dados de cada domínio: onde a consistência transacional é crítica usa-se banco relacional, e onde predominam documentos de leitura intensa usa-se banco de documentos.
+
 A arquitetura adota também o padrão de banco de dados isolado por serviço, onde cada um dos quatro microsserviços possuem o seu próprio banco de dados exclusivo, impedindo que qualquer componente acesse diretamente as tabelas de outro domínio e garantindo total independência técnica e de evolução estrutural, além de evitar o risco de *dual write* (quando um serviço grava em seu banco e falha ao notificar outro). Desta forma, para solucionar o desafio de manter a consistência entre diferentes bases de dados sem recorrer a transações distribuídas complexas e lentas que prejudicariam a disponibilidade, o sistema, para usos em arquiteturas como CQRS ou SAGA que precisam de comunicação entre os bancos de dados de uma forma lógica e sem erros de comunicação ou inconsistências entre os bancos de dados, implementa o padrão **Outbox** combinado com o processo de encaminhamento conhecido como *Relay*, que lê periodicamente eventos pendentes e os despacha via HTTP REST para o serviço destino, garantindo entrega confiável sem brokers externos. Ou seja, sempre que um microsserviço precisa persistir uma alteração local e simultaneamente notificar outro domínio sobre um evento relevante, a modificação dos dados e o registro da intenção de envio do evento são gravados atomicamente na mesma transação dentro do banco do próprio serviço emissor, e em segundo plano, um processo autônomo e contínuo lê periodicamente esses eventos pendentes na tabela de controle, despachando-os via requisições de rede para o microsserviço de destino e assegurando a entrega confiável mesmo diante de instabilidades temporárias de comunicação.
 
 ---
