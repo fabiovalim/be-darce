@@ -399,10 +399,6 @@ As tabelas abaixo apresentam todas as rotas de cada microsserviço, com os camin
 
 A consulta passa por SOLICITADA, CONFIRMADA e CONCLUIDA, e pode ser CANCELADA a partir de SOLICITADA ou CONFIRMADA, e qualquer transição fora desse caminho responde 409.
 
-
-#### Microserviço de Gamificação
-Aqui está a versão atualizada e expandida da tabela do **Microsserviço de Gamificação**, incluindo o **CRUD completo para o gerenciamento de Trilhas e Etapas** pelo Administrador (via `bff-admin`), garantindo suporte à reordenação, inserção em qualquer posição (início, meio ou fim) e personalização total da jornada educacional:
-
 ---
 
 #### Microsserviço de Gamificação
