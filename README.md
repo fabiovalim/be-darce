@@ -361,8 +361,8 @@ As tabelas abaixo apresentam todas as rotas de cada microsserviço, com os camin
 | GET | `/v1/usuarios` | Lista usuários (filtros por tipo, situação e lista de ids) | `bff-admin` | Administrador | 200; 403 |
 | GET | `/v1/usuarios/{id}` | Detalhe de um usuário | `bff-admin` | Administrador | 200; 403, 404 |
 | GET | `/v1/usuarios/estatisticas` | Totais por tipo e por situação | `bff-admin` | Administrador | 200; 403 |
-| PUT | `/v1/internal/sagas/{sagaId}/papel-mentor` | Passo da SAGA: adiciona o tipo MENTOR | `gamificacao-service` | Interna | 200; 404 |
-| DELETE | `/v1/internal/sagas/{sagaId}/papel-mentor` | Compensação SAGA: remove o tipo MENTOR | `gamificacao-service` | Interna | 204 |
+| PUT | `/v1/usuarios/{id}` | Passo da SAGA: adiciona o tipo MENTOR | `gamificacao-service` | Interna | 200; 404 |
+| PUT | `/v1/usuarios/{id}` | Compensação SAGA: remove o tipo MENTOR | `gamificacao-service` | Interna | 204 |
 
 
 #### Microserviço de Atendimento
@@ -386,6 +386,10 @@ As tabelas abaixo apresentam todas as rotas de cada microsserviço, com os camin
 | POST | `/v1/consultas/{id}/cancelamento` | Paciente ou psicólogo cancela | `bff-portal` | Paciente e Psicólogo | 200; 403, 404, 409 |
 | POST | `/v1/consultas/{id}/notas` | Registra a nota de acompanhamento | `bff-portal` | Pública | 201; 400, 403, 404, 409 |
 | GET | `/v1/pacientes/{usuarioId}/notas` | Notas sobre um paciente (psicólogo autor ou admin) | `bff-portal` e `bff-admin` | Psicólogo e Administrador | 200; 403 |
+| POST | `/v1/promocoes-mentor` | Inicia a SAGA de promoção a mentor | `bff-admin` | Psicólogo e Administrador | 202; 400, 403, 404, 409 (não apto, já é mentor ou promoção em andamento) |
+| GET | `/v1/promocoes-mentor/{id}` | Estado da SAGA e de cada passo | `bff-admin` | Administrador | 200; 403, 404 |
+| GET | `/v1/promocoes-mentor` | Lista as promoções (filtro por situação) | `bff-admin` | Administrador | 200; 403 |
+| POST | `/v1/internal/eventos` | Recebe o evento de consulta concluída | `atendimento-service` | Interna | 200; 202; 400 |
 
 A consulta passa por SOLICITADA, CONFIRMADA e CONCLUIDA, e pode ser CANCELADA a partir de SOLICITADA ou CONFIRMADA, e qualquer transição fora desse caminho responde 409.
 
@@ -412,10 +416,8 @@ Aqui está a versão atualizada e expandida da tabela do **Microsserviço de Gam
 | GET | `/v1/usuarios/{id}/nivel` | Nível e pontos de qualquer usuário (perfil público) | `bff-portal` | Logado | 200; 404 |
 | GET | `/v1/usuarios/{id}/progresso` | Resumo completo de um usuário | `bff-admin` | Administrador | 200; 403, 404 |
 | GET | `/v1/estatisticas/niveis` | Quantos usuários há em cada nível | `bff-admin` | Administrador | 200; 403 |
-| POST | `/v1/promocoes-mentor` | Inicia a SAGA de promoção a mentor | `bff-admin` | Psicólogo e Administrador | 202; 400, 403, 404, 409 (não apto, já é mentor ou promoção em andamento) |
-| GET | `/v1/promocoes-mentor/{id}` | Estado da SAGA e de cada passo | `bff-admin` | Administrador | 200; 403, 404 |
-| GET | `/v1/promocoes-mentor` | Lista as promoções (filtro por situação) | `bff-admin` | Administrador | 200; 403 |
-| POST | `/v1/internal/eventos` | Recebe o evento de consulta concluída | `atendimento-service` | Interna | 200; 202; 400 |
+| POST | `/v1/usuarios/me/liberar-progresso` | Libera o acesso total de todas as trilhas, mesmo as que não foram concluídas | `bff-portal` | Interna | 200; 401 |
+
 
 #### Microserviço de Comunidade
 
@@ -443,7 +445,7 @@ Aqui está a versão atualizada e expandida da tabela do **Microsserviço de Gam
 | POST | `/v1/pedidos-apoio` | Botão de pânico: registra o pedido de apoio | `bff-portal` | Paciente | 201 |
 | GET | `/v1/pedidos-apoio` | Pedidos de apoio pendentes | `bff-portal` (mentor) e `bff-admin` | Psicólogo, Mentor e Administrador | 200; 403 |
 | POST | `/v1/pedidos-apoio/{id}/atendimento` | Registra o primeiro atendimento ao pedido | `bff-portal` (mentor) e `bff-admin` | Psicólogo, Mentor e Administrador | 200; 403, 404, 409 |
-| PUT | `/v1/internal/sagas/{sagaId}/perfil-mentor` | Passo da SAGA (pivô): cria o perfil de mentor | `gamificacao-service` | Interna | 201 (criado) ou 200 (já criado por esta SAGA); 409 (usuário impedido) |
+| POST | `/v1/mentores` | Passo da SAGA (pivô): cria o perfil de mentor | `gamificacao-service` | Interna | 201 (criado) ou 200 (já criado por esta SAGA); 409 (usuário impedido) |
 
 
 ## HATEOAS
