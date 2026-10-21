@@ -454,6 +454,10 @@ Aqui está a versão atualizada e expandida da tabela do **Microsserviço de Gam
 | POST | `/v1/mentores` | Passo da SAGA (pivô): cria o perfil de mentor | `gamificacao-service` | Interna | 201 (criado) ou 200 (já criado por esta SAGA); 409 (usuário impedido) |
 
 
+### Especificações OpenAPI
+
+Os contratos REST completos (OpenAPI 3.1) dos quatro microsserviços estão em [`docs/api/`](docs/api/): [Usuários](docs/api/usuarios.yaml), [Atendimento](docs/api/atendimento.yaml), [Gamificação](docs/api/gamificacao.yaml) e [Comunidade](docs/api/comunidade.yaml).
+
 ## HATEOAS
 
 O conceito de HATEOAS será aplicado nos recursos de consulta e psicólogo do microsserviço de atendimento com o propósito principal de guiar dinamicamente o comportamento e a navegação da aplicação cliente. Na prática, em vez de a API retornar apenas os dados estáticos de um registro, ela entregará em conjunto um bloco exclusivo de links de navegação, na qual esses links serão gerados dinamicamente em tempo de execução, adaptando-se tanto ao estado atual da consulta (como `SOLICITADA` ou `CONCLUIDA`) quanto ao perfil do usuário autenticado (seja um psicólogo ou um paciente). Com essa implementação, o front-end não precisará mais calcular regras de negócio complexas para saber quais botões exibir ou construir URLs manualmente para cada endpoint, tornando a aplicação mais inteligente e conectada diretamente às permissões do servidor.
