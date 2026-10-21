@@ -295,6 +295,44 @@ A arquitetura adota também o padrão de banco de dados isolado por serviço, on
 
 Também foi implementado o padrão de separação de responsabilidades entre comandos e consultas, conhecido como CQRS, aplicado no microsserviço de gamificação da BEDARCE devido à alta diferença operacional de requisições de escrita e leitura nesse domínio, onde o volume de leituras para exibição de progresso e dos conteúdos das trilhas, supera a frequência de gravações de conclusão de etapas, além de ser o microsserviço mais utilizado, na qual os usuários necessitam de uma ótima performance de comunicação e resposta com o sistema. Nesse sentido, por ter essa diferença no volume de escrita e de leitura, para atender a essa exigência de performance, a gamificação se divide estruturalmente em dois modelos, o de escrita, responsável por processar comandos que aplicam regras estritas de validação, verificação de pré-requisitos e gravação de pontos, e o modelo de leitura, composto por estruturas de dados otimizadas especificamente para responder de forma instantânea às consultas de interface solicitadas pelos usuários em suas trilhas gamificadas, como o conteúdo atual ou passado da trilha. Com isso, ambos os modelos contém banco de dados separados, e a atualização do modelo de leitura não ocorre de forma síncrona durante a execução dos comandos de escrita, em vez disso, também se utiliza o Outbox e o Relay, dessa forma, quando um paciente conclui uma etapa educativa da recuperação, o modelo de escrita registra o evento em sua base de dados e o despacha de forma assíncrona para atualizar o modelo de leitura com uma defasagem temporal controlada e aceitável, garantindo alta disponibilidade e isolamento eficiente entre as operações de modificação e recuperação de dados. Além disso, a defasagem aceitável (lag) projetada para essa sincronização eventual é de até 2 segundos em condições normais, na qual esse atraso tem impacto mínimo para o usuário final, uma vez que a resposta síncrona do comando de escrita já devolve imediatamente ao front-end os pontos ganhos e o nível atualizado, garantindo alta disponibilidade, performance otimizada e isolamento eficiente entre as operações de modificação e recuperação de dados.
 
+### Pontos de consistência eventual
+
+| Ponto | Descrição | Defasagem aceitável |
+| --- | --- | --- |
+| Modelo de leitura da Gamificação | O progresso exibido é atualizado depois da conclusão da etapa | Até 2 segundos |
+| Papel do usuário durante a SAGA | Entre o passo em Usuários e o pivô em Comunidade, o usuário já pode ter o papel de mentor sem perfil criado | Duração da SAGA, revertida por compensação em caso de falha |
+| Vitrine de mentores | O mentor só aparece na listagem após o pivô | Duração da SAGA |
+
+### Risco de dual write
+
+O risco existe sempre que um serviço grava no próprio banco e precisa avisar outro:
+
+- **Gamificação:** concluir a etapa (modelo de escrita) e atualizar o modelo de leitura.
+- **Atendimento:** registrar a aprovação do psicólogo e iniciar a SAGA de promoção.
+- **Orquestrador:** gravar o estado do passo e chamar o serviço seguinte.
+
+Se o serviço gravasse e depois enviasse a notificação, uma falha entre as duas operações deixaria os dados inconsistentes. Para evitar isso, a alteração e o evento são gravados na mesma transação local (padrão Outbox).
+
+### Projeto da tabela Outbox
+
+| Coluna | Descrição |
+| --- | --- |
+| `id` | Identificador único do evento (UUID) |
+| `tipo_evento` | Ex.: `ETAPA_CONCLUIDA`, `PROMOCAO_APROVADA` |
+| `agregado_id` | Id do recurso que originou o evento |
+| `destino` | Serviço e rota de destino |
+| `payload` | Corpo do evento em JSON |
+| `status` | `PENDENTE`, `ENVIADO` ou `FALHA` |
+| `tentativas` | Número de tentativas de envio |
+| `proximo_envio` | Quando tentar novamente |
+| `criado_em` | Data de criação |
+
+**Política do Relay:**
+- Consulta eventos `PENDENTE` a cada 1 segundo, em lotes de 50, o que cumpre a defasagem de 2 segundos da Gamificação.
+- Em caso de erro, aplica retentativa com espera exponencial (1s, 2s, 4s...).
+- Após o limite de tentativas, marca como `FALHA` para análise manual.
+- A entrega é *at-least-once*, então o consumidor deve ser **idempotente**: registra os ids de eventos já processados e responde `200` sem reprocessar quando recebe um repetido.
+
 ---
 
 ## SAGA de Evolução de Paciente para Mentor
