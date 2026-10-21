@@ -349,6 +349,20 @@ O caminho triste ocorre quando uma falha de negócio impede o andamento da trans
 
 <img width="2560" height="1440" alt="DiagramaSequenciaFalha" src="https://github.com/user-attachments/assets/3b08026b-cce6-4ea3-9f03-29d560c59ef2" />
 
+### Passos e transações compensatórias
+
+| Passo | Serviço | Ação | Compensação |
+| --- | --- | --- | --- |
+| 1 | Atendimento | Psicólogo aprova a evolução e a promoção é registrada como em andamento | Marcar a promoção como falha e devolver resposta negativa ao gatilho |
+| 2 | Usuários | Adiciona o tipo MENTOR ao usuário | Remover o tipo MENTOR (`DELETE /v1/usuarios/{id}/tipos/MENTOR`) |
+| 3 (pivô) | Comunidade | Cria o perfil oficial de mentor | Nenhuma: após a confirmação, a promoção é definitiva |
+| 4 | Gamificação | Libera a trilha exclusiva de mentores | Nenhuma: é repetível, com retentativas até concluir |
+
+As compensações rodam em ordem inversa e só se a falha ocorrer antes ou no pivô. Falhas após o pivô são resolvidas por retentativas, e os passos são idempotentes.
+
+### Por que orquestrada e não coreografada
+
+Na coreografada, cada serviço reagiria a eventos dos outros e o fluxo ficaria espalhado, com dependências cruzadas entre quatro serviços. Sem broker externo, isso aumentaria o acoplamento e dificultaria saber em que estado está a promoção. Na orquestrada, um componente central (no serviço de Atendimento) conhece a sequência, mantém o estado de cada passo, consulta-o em `GET /v1/promocoes-mentor/{id}` e dispara as compensações na ordem correta, sem poluir os demais serviços com regras da SAGA.
 
 ---
 
