@@ -556,7 +556,26 @@ Esse sistema faz a adaptação da interface conforme o ciclo de vida avança, ou
 
 ## Estrutura de pastas
 
-[A estrutura de pastas será adicionada futuramente]
+> Estrutura planejada; será ajustada conforme a implementação.
+
+```text
+bedarce/
+├── gateway/              # API Gateway (roteamento, autenticação, rate limiting)
+├── bffs/
+│   ├── bff-portal/
+│   └── bff-admin/
+├── services/
+│   ├── usuarios-service/
+│   ├── atendimento-service/
+│   ├── gamificacao-service/
+│   └── comunidade-service/
+├── frontends/
+│   ├── portal/
+│   └── admin/
+├── docs/
+│   └── api/              # Contratos OpenAPI
+└── README.md
+```
 
 ## Como rodar o projeto
 
