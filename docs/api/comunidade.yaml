@@ -1,0 +1,2196 @@
+openapi: 3.1.0
+info:
+  title: BEDARCE — Microsserviço de Comunidade
+  version: 1.0.0
+  description: Perfis de mentores, relatos, grupos de apoio, conversas e pedidos de apoio. Acesso externo por token Bearer
+    e autorização por papel/participação; operações internas da SAGA usam credencial de serviço. O Gateway pode responder
+    429 quando excede o rate limit; o BFF pode responder 503 quando uma dependência necessária fica indisponível, conforme
+    a arquitetura descrita no README.
+servers:
+- url: /
+  description: Origem configurada pelo ambiente para o microsserviço; os caminhos deste contrato incluem /v1.
+tags:
+- name: Mentores
+- name: Relatos
+- name: Grupos
+- name: Usuarios
+- name: Conversas
+- name: Pedidos Apoio
+- name: Internal
+paths:
+  /v1/mentores:
+    get:
+      tags:
+      - Mentores
+      summary: Listar mentores
+      description: 'Acesso: Paciente e Administrador. Portal lista mentores ativos; administrador pode filtrar por situação.'
+      operationId: getV1Mentores
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/mentores
+                code: UNAUTHORIZED
+      parameters:
+      - name: situacao
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtro administrativo pela situação do mentor.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/mentores/{usuarioId}:
+    get:
+      tags:
+      - Mentores
+      summary: Consultar perfil de mentor
+      description: 'Acesso: Logado. Retorna o perfil do mentor.'
+      operationId: getV1MentoresUsuarioid
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mentor'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/mentores/example-id
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/mentores/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do usuário mentor.
+      x-bedarce-caller: bff-portal
+  /v1/mentores/me:
+    put:
+      tags:
+      - Mentores
+      summary: Atualizar meu perfil de mentor
+      description: 'Acesso: Mentor. O mentor altera somente seu próprio perfil.'
+      operationId: putV1MentoresMe
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mentor'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/mentores/me
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/mentores/me
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/mentores/me
+                code: FORBIDDEN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MentorUpdateRequest'
+      x-bedarce-caller: bff-portal
+  /v1/mentores/{usuarioId}/status:
+    put:
+      tags:
+      - Mentores
+      summary: Atualizar situação do mentor
+      description: 'Acesso: Administrador. Define mentor como ATIVO, INATIVO ou IMPEDIDO.'
+      operationId: putV1MentoresUsuarioidStatus
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mentor'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/mentores/example-id/status
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/mentores/example-id/status
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/mentores/example-id/status
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/mentores/example-id/status
+                code: NOT_FOUND
+      parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do usuário mentor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusMentorRequest'
+      x-bedarce-caller: bff-admin
+  /v1/mentores/estatisticas:
+    get:
+      tags:
+      - Mentores
+      summary: Estatísticas de mentores
+      description: 'Acesso: Administrador. Totais por situação.'
+      operationId: getV1MentoresEstatisticas
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatisticasMentores'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/mentores/estatisticas
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/mentores/estatisticas
+                code: FORBIDDEN
+      x-bedarce-caller: bff-admin
+  /v1/relatos:
+    post:
+      tags:
+      - Relatos
+      summary: Criar relato
+      description: 'Acesso: Mentor. Publica relato de experiência.'
+      operationId: postV1Relatos
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Relato'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/relatos/r-5
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/relatos
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/relatos
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/relatos
+                code: FORBIDDEN
+      parameters:
+      - name: tag
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pela tag.
+      - name: autorId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pelo ID do mentor autor.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelatoRequest'
+      x-bedarce-caller: bff-portal
+    get:
+      tags:
+      - Relatos
+      summary: Listar relatos
+      description: 'Acesso: Logado. Filtra por tag e autor.'
+      operationId: getV1Relatos
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelatoPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/relatos
+                code: UNAUTHORIZED
+      parameters:
+      - name: tag
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pela tag.
+      - name: autorId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pelo ID do mentor autor.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal
+  /v1/relatos/{id}:
+    get:
+      tags:
+      - Relatos
+      summary: Consultar relato
+      description: 'Acesso: Logado. Retorna relato.'
+      operationId: getV1RelatosId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Relato'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/relatos/example-id
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/relatos/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal
+    put:
+      tags:
+      - Relatos
+      summary: Atualizar relato
+      description: 'Acesso: Mentor. Somente o autor atualiza.'
+      operationId: putV1RelatosId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Relato'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/relatos/example-id
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/relatos/example-id
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/relatos/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/relatos/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelatoRequest'
+      x-bedarce-caller: bff-portal
+    delete:
+      tags:
+      - Relatos
+      summary: Remover relato
+      description: 'Acesso: Mentor e Administrador. Autor ou administrador remove.'
+      operationId: deleteV1RelatosId
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Operação concluída sem conteúdo.
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/relatos/example-id
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/relatos/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/relatos/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/grupos:
+    post:
+      tags:
+      - Grupos
+      summary: Criar grupo de apoio
+      description: 'Acesso: Mentor. Cria evento/grupo com link externo.'
+      operationId: postV1Grupos
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Grupo'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/grupos/g-8
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/grupos
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/grupos
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/grupos
+                code: FORBIDDEN
+      parameters:
+      - name: nome
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Busca por nome.
+      - name: inicio
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Início do período ISO 8601.
+      - name: fim
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Fim do período ISO 8601.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrupoRequest'
+      x-bedarce-caller: bff-portal
+    get:
+      tags:
+      - Grupos
+      summary: Listar grupos
+      description: 'Acesso: Logado. Lista grupos; filtros por nome e período.'
+      operationId: getV1Grupos
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/grupos
+                code: UNAUTHORIZED
+      parameters:
+      - name: nome
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Busca por nome.
+      - name: inicio
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Início do período ISO 8601.
+      - name: fim
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Fim do período ISO 8601.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/grupos/{id}:
+    get:
+      tags:
+      - Grupos
+      summary: Consultar grupo
+      description: 'Acesso: Logado. Retorna detalhes do grupo.'
+      operationId: getV1GruposId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Grupo'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/grupos/example-id
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/grupos/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal
+  /v1/grupos/{id}/participantes:
+    post:
+      tags:
+      - Grupos
+      summary: Participar de grupo
+      description: 'Acesso: Logado. Entra no grupo; conflito se já participa ou se está lotado.'
+      operationId: postV1GruposIdParticipantes
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participacao'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/grupos/g-8/participantes/u-42
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/grupos/example-id/participantes
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/grupos/example-id/participantes
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/grupos/example-id/participantes
+                code: CONFLICT
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal
+  /v1/grupos/{id}/participantes/me:
+    delete:
+      tags:
+      - Grupos
+      summary: Sair do grupo
+      description: 'Acesso: Logado. Remove a participação do usuário autenticado.'
+      operationId: deleteV1GruposIdParticipantesMe
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Operação concluída sem conteúdo.
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/grupos/example-id/participantes/me
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/grupos/example-id/participantes/me
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal
+  /v1/usuarios/{id}/grupos:
+    get:
+      tags:
+      - Usuarios
+      summary: Listar grupos do usuário
+      description: 'Acesso: Logado. Lista grupos dos quais o usuário participa.'
+      operationId: getV1UsuariosIdGrupos
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/example-id/grupos
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/usuarios/example-id/grupos
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal
+  /v1/conversas:
+    get:
+      tags:
+      - Conversas
+      summary: Listar minhas conversas
+      description: 'Acesso: Logado. Lista conversas privadas e de grupo do usuário autenticado.'
+      operationId: getV1Conversas
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversaPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/conversas
+                code: UNAUTHORIZED
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal
+  /v1/conversas/{id}/mensagens:
+    get:
+      tags:
+      - Conversas
+      summary: Listar mensagens da conversa
+      description: 'Acesso: Logado. Somente integrantes da conversa podem consultar.'
+      operationId: getV1ConversasIdMensagens
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensagemPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/conversas/example-id/mensagens
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/conversas/example-id/mensagens
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/conversas/example-id/mensagens
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal
+    post:
+      tags:
+      - Conversas
+      summary: Enviar mensagem
+      description: 'Acesso: Logado. Somente integrantes da conversa podem enviar.'
+      operationId: postV1ConversasIdMensagens
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mensagem'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/conversas/cv-9/mensagens/m-10
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/conversas/example-id/mensagens
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/conversas/example-id/mensagens
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/conversas/example-id/mensagens
+                code: FORBIDDEN
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MensagemRequest'
+      x-bedarce-caller: bff-portal
+  /v1/pedidos-apoio:
+    post:
+      tags:
+      - Pedidos Apoio
+      summary: Criar pedido de apoio
+      description: 'Acesso: Paciente. Registra pedido pelo botão de pânico.'
+      operationId: postV1PedidosApoio
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PedidoApoio'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/pedidos-apoio/pa-4
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/pedidos-apoio
+                code: UNAUTHORIZED
+      parameters:
+      - name: situacao
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Por padrão retorna somente PENDENTE.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoApoioRequest'
+      x-bedarce-caller: bff-portal
+    get:
+      tags:
+      - Pedidos Apoio
+      summary: Listar pedidos pendentes
+      description: 'Acesso: Psicólogo, Mentor e Administrador. Lista pedidos pendentes de atendimento.'
+      operationId: getV1PedidosApoio
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PedidoApoioPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/pedidos-apoio
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/pedidos-apoio
+                code: FORBIDDEN
+      parameters:
+      - name: situacao
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Por padrão retorna somente PENDENTE.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal` (mentor) e `bff-admin
+  /v1/pedidos-apoio/{id}/atendimento:
+    post:
+      tags:
+      - Pedidos Apoio
+      summary: Registrar primeiro atendimento
+      description: 'Acesso: Psicólogo, Mentor e Administrador. Registra o primeiro atendimento; 409 se já atendido.'
+      operationId: postV1PedidosApoioIdAtendimento
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PedidoApoio'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/pedidos-apoio/example-id/atendimento
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/pedidos-apoio/example-id/atendimento
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/pedidos-apoio/example-id/atendimento
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/pedidos-apoio/example-id/atendimento
+                code: CONFLICT
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtendimentoApoioRequest'
+      x-bedarce-caller: bff-portal` (mentor) e `bff-admin
+  /v1/internal/sagas/{sagaId}/perfil-mentor:
+    put:
+      tags:
+      - Internal
+      summary: Criar perfil de mentor pela SAGA
+      description: 'Acesso: Interna. Passo pivô: cria perfil; retorna 200 se já criado pela mesma SAGA, 409 se usuário impedido.'
+      operationId: putV1InternalSagasSagaidPerfilMentor
+      security:
+      - internalServiceAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mentor'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/mentores/u-42
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/internal/sagas/example-id/perfil-mentor
+                code: CONFLICT
+        '200':
+          description: Perfil já criado anteriormente pela mesma SAGA.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mentor'
+      parameters:
+      - name: sagaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da SAGA.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerfilMentorSagaRequest'
+      x-bedarce-caller: gamificacao-service
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: about:blank
+        title:
+          type: string
+          example: Requisição inválida
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: Um ou mais campos são inválidos.
+        instance:
+          type: string
+          format: uri-reference
+          example: /v1/recursos
+        code:
+          type: string
+          example: VALIDATION_ERROR
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+    SituacaoMentor:
+      type: string
+      enum:
+      - ATIVO
+      - INATIVO
+      - IMPEDIDO
+      example: ATIVO
+    Mentor:
+      type: object
+      properties:
+        usuarioId:
+          type: string
+          example: u-31
+        apelido:
+          type: string
+          example: Rafa
+        descricao:
+          type: string
+          example: Ex-apostador em recuperação; compartilho minha experiência.
+        situacao:
+          $ref: '#/components/schemas/SituacaoMentor'
+        criadoEm:
+          type: string
+          format: date-time
+          example: '2026-08-01T10:00:00Z'
+      additionalProperties: false
+      required:
+      - usuarioId
+      - apelido
+      - descricao
+      - situacao
+      example:
+        usuarioId: u-31
+        apelido: Rafa
+        descricao: Ex-apostador em recuperação; compartilho minha experiência.
+        situacao: ATIVO
+        criadoEm: '2026-08-01T10:00:00Z'
+    MentorPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mentor'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - usuarioId: u-31
+          apelido: Rafa
+          descricao: Compartilho minha experiência.
+          situacao: ATIVO
+        total: 1
+        page: 1
+        pageSize: 20
+    MentorUpdateRequest:
+      type: object
+      properties:
+        apelido:
+          type: string
+          maxLength: 80
+          example: Rafa
+        descricao:
+          type: string
+          maxLength: 1000
+          example: Ex-apostador em recuperação; compartilho minha experiência.
+      additionalProperties: false
+      required:
+      - apelido
+      - descricao
+      example:
+        apelido: Rafa
+        descricao: Ex-apostador em recuperação; compartilho minha experiência.
+    StatusMentorRequest:
+      type: object
+      properties:
+        situacao:
+          $ref: '#/components/schemas/SituacaoMentor'
+      additionalProperties: false
+      required:
+      - situacao
+      example:
+        situacao: ATIVO
+    EstatisticasMentores:
+      type: object
+      properties:
+        porSituacao:
+          type: object
+          properties:
+            ATIVO:
+              type: integer
+              minimum: 0
+              example: 8
+            INATIVO:
+              type: integer
+              minimum: 0
+              example: 2
+            IMPEDIDO:
+              type: integer
+              minimum: 0
+              example: 1
+          additionalProperties: false
+      additionalProperties: false
+      required:
+      - porSituacao
+      example:
+        porSituacao:
+          ATIVO: 8
+          INATIVO: 2
+          IMPEDIDO: 1
+    RelatoRequest:
+      type: object
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 160
+          example: Minha jornada
+        conteudo:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          example: Relato pessoal sobre recuperação.
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+          uniqueItems: true
+          example:
+          - recuperacao
+          - apoio
+      additionalProperties: false
+      required:
+      - titulo
+      - conteudo
+      example:
+        titulo: Minha jornada
+        conteudo: Relato pessoal sobre recuperação.
+        tags:
+        - recuperacao
+        - apoio
+    Relato:
+      type: object
+      properties:
+        id:
+          type: string
+          example: r-5
+        autorId:
+          type: string
+          example: u-31
+        titulo:
+          type: string
+          example: Minha jornada
+        conteudo:
+          type: string
+          example: Relato pessoal sobre recuperação.
+        tags:
+          type: array
+          items:
+            type: string
+          example:
+          - recuperacao
+          - apoio
+        criadoEm:
+          type: string
+          format: date-time
+          example: '2026-10-01T12:00:00Z'
+        atualizadoEm:
+          type: string
+          format: date-time
+          example: '2026-10-01T12:00:00Z'
+      additionalProperties: false
+      required:
+      - id
+      - autorId
+      - titulo
+      - conteudo
+      - tags
+      - criadoEm
+      example:
+        id: r-5
+        autorId: u-31
+        titulo: Minha jornada
+        conteudo: Relato pessoal sobre recuperação.
+        tags:
+        - recuperacao
+        - apoio
+        criadoEm: '2026-10-01T12:00:00Z'
+    RelatoPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Relato'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: r-5
+          autorId: u-31
+          titulo: Minha jornada
+          conteudo: Relato pessoal sobre recuperação.
+          tags:
+          - recuperacao
+          criadoEm: '2026-10-01T12:00:00Z'
+        total: 1
+        page: 1
+        pageSize: 20
+    GrupoRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Roda de apoio de domingo
+        descricao:
+          type: string
+          maxLength: 1000
+          example: Encontro virtual de apoio mútuo.
+        inicio:
+          type: string
+          format: date-time
+          example: '2026-10-25T18:00:00Z'
+        linkExterno:
+          type: string
+          format: uri
+          example: https://meet.example.org/roda
+        capacidadeMaxima:
+          type: integer
+          minimum: 2
+          example: 20
+      additionalProperties: false
+      required:
+      - nome
+      - descricao
+      - inicio
+      - linkExterno
+      example:
+        nome: Roda de apoio de domingo
+        descricao: Encontro virtual de apoio mútuo.
+        inicio: '2026-10-25T18:00:00Z'
+        linkExterno: https://meet.example.org/roda
+        capacidadeMaxima: 20
+    Grupo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: g-8
+        mentorId:
+          type: string
+          example: u-31
+        nome:
+          type: string
+          example: Roda de apoio de domingo
+        descricao:
+          type: string
+          example: Encontro virtual de apoio mútuo.
+        inicio:
+          type: string
+          format: date-time
+          example: '2026-10-25T18:00:00Z'
+        linkExterno:
+          type: string
+          format: uri
+          example: https://meet.example.org/roda
+        capacidadeMaxima:
+          type: integer
+          minimum: 2
+          example: 20
+        totalParticipantes:
+          type: integer
+          minimum: 0
+          example: 8
+      additionalProperties: false
+      required:
+      - id
+      - mentorId
+      - nome
+      - descricao
+      - inicio
+      - linkExterno
+      - totalParticipantes
+      example:
+        id: g-8
+        mentorId: u-31
+        nome: Roda de apoio de domingo
+        descricao: Encontro virtual de apoio mútuo.
+        inicio: '2026-10-25T18:00:00Z'
+        linkExterno: https://meet.example.org/roda
+        capacidadeMaxima: 20
+        totalParticipantes: 8
+    GrupoPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Grupo'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: g-8
+          mentorId: u-31
+          nome: Roda de apoio de domingo
+          descricao: Encontro virtual.
+          inicio: '2026-10-25T18:00:00Z'
+          linkExterno: https://meet.example.org/roda
+          capacidadeMaxima: 20
+          totalParticipantes: 8
+        total: 1
+        page: 1
+        pageSize: 20
+    Participacao:
+      type: object
+      properties:
+        grupoId:
+          type: string
+          example: g-8
+        usuarioId:
+          type: string
+          example: u-42
+        entrouEm:
+          type: string
+          format: date-time
+          example: '2026-10-21T10:00:00Z'
+      additionalProperties: false
+      required:
+      - grupoId
+      - usuarioId
+      - entrouEm
+      example:
+        grupoId: g-8
+        usuarioId: u-42
+        entrouEm: '2026-10-21T10:00:00Z'
+    Conversa:
+      type: object
+      properties:
+        id:
+          type: string
+          example: cv-9
+        tipo:
+          type: string
+          enum:
+          - PRIVADA
+          - GRUPO
+          example: PRIVADA
+        titulo:
+          type: string
+          example: Conversa de apoio
+        participantes:
+          type: array
+          items:
+            type: string
+          example:
+          - u-42
+          - u-31
+        grupoId:
+          type: string
+          example: g-8
+        ultimaMensagemEm:
+          type: string
+          format: date-time
+          example: '2026-10-21T11:00:00Z'
+      additionalProperties: false
+      required:
+      - id
+      - tipo
+      - participantes
+      example:
+        id: cv-9
+        tipo: PRIVADA
+        titulo: Conversa de apoio
+        participantes:
+        - u-42
+        - u-31
+        ultimaMensagemEm: '2026-10-21T11:00:00Z'
+    ConversaPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conversa'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: cv-9
+          tipo: PRIVADA
+          participantes:
+          - u-42
+          - u-31
+        total: 1
+        page: 1
+        pageSize: 20
+    MensagemRequest:
+      type: object
+      properties:
+        conteudo:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          example: Obrigado por compartilhar.
+      additionalProperties: false
+      required:
+      - conteudo
+      example:
+        conteudo: Obrigado por compartilhar.
+    Mensagem:
+      type: object
+      properties:
+        id:
+          type: string
+          example: m-10
+        conversaId:
+          type: string
+          example: cv-9
+        autorId:
+          type: string
+          example: u-42
+        conteudo:
+          type: string
+          example: Obrigado por compartilhar.
+        enviadaEm:
+          type: string
+          format: date-time
+          example: '2026-10-21T11:00:00Z'
+      additionalProperties: false
+      required:
+      - id
+      - conversaId
+      - autorId
+      - conteudo
+      - enviadaEm
+      example:
+        id: m-10
+        conversaId: cv-9
+        autorId: u-42
+        conteudo: Obrigado por compartilhar.
+        enviadaEm: '2026-10-21T11:00:00Z'
+    MensagemPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mensagem'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: m-10
+          conversaId: cv-9
+          autorId: u-42
+          conteudo: Obrigado por compartilhar.
+          enviadaEm: '2026-10-21T11:00:00Z'
+        total: 1
+        page: 1
+        pageSize: 20
+    PedidoApoioRequest:
+      type: object
+      properties:
+        mensagem:
+          type: string
+          maxLength: 1000
+          example: Preciso conversar com alguém agora.
+      additionalProperties: false
+      example:
+        mensagem: Preciso conversar com alguém agora.
+    PedidoApoio:
+      type: object
+      properties:
+        id:
+          type: string
+          example: pa-4
+        pacienteId:
+          type: string
+          example: u-42
+        mensagem:
+          type: string
+          example: Preciso conversar com alguém agora.
+        situacao:
+          type: string
+          enum:
+          - PENDENTE
+          - EM_ATENDIMENTO
+          - ATENDIDO
+          example: PENDENTE
+        criadoEm:
+          type: string
+          format: date-time
+          example: '2026-10-21T11:00:00Z'
+        atendidoPor:
+          type: string
+          example: u-31
+        atendidoEm:
+          type: string
+          format: date-time
+          example: '2026-10-21T11:05:00Z'
+      additionalProperties: false
+      required:
+      - id
+      - pacienteId
+      - situacao
+      - criadoEm
+      example:
+        id: pa-4
+        pacienteId: u-42
+        mensagem: Preciso conversar com alguém agora.
+        situacao: PENDENTE
+        criadoEm: '2026-10-21T11:00:00Z'
+    PedidoApoioPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PedidoApoio'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: pa-4
+          pacienteId: u-42
+          situacao: PENDENTE
+          criadoEm: '2026-10-21T11:00:00Z'
+        total: 1
+        page: 1
+        pageSize: 20
+    AtendimentoApoioRequest:
+      type: object
+      properties:
+        mensagem:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          example: Estou aqui para ajudar.
+      additionalProperties: false
+      required:
+      - mensagem
+      example:
+        mensagem: Estou aqui para ajudar.
+    PerfilMentorSagaRequest:
+      type: object
+      properties:
+        usuarioId:
+          type: string
+          example: u-42
+      additionalProperties: false
+      required:
+      - usuarioId
+      example:
+        usuarioId: u-42
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token de sessão emitido por /v1/auth/login. O formato interno do token não é especificado.
+    internalServiceAuth:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+      description: Credencial de serviço para chamadas internas que não passam pelo Gateway.

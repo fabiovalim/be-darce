@@ -1,0 +1,1984 @@
+openapi: 3.1.0
+info:
+  title: BEDARCE — Microsserviço de Atendimento
+  version: 1.0.0
+  description: Perfis de psicólogos, publicações, disponibilidade, consultas e notas. Operações externas exigem token Bearer.
+    Respostas de psicólogos e consultas incluem links HATEOAS calculados conforme estado e autorização. O Gateway pode responder
+    429 quando excede o rate limit; o BFF pode responder 503 quando uma dependência necessária fica indisponível, conforme
+    a arquitetura descrita no README.
+servers:
+- url: /
+  description: Origem configurada pelo ambiente para o microsserviço; os caminhos deste contrato incluem /v1.
+tags:
+- name: Psicologos
+- name: Publicacoes
+- name: Consultas
+- name: Pacientes
+- name: Internal
+paths:
+  /v1/psicologos:
+    get:
+      tags:
+      - Psicologos
+      summary: Listar psicólogos
+      description: 'Acesso: Logado e Administrador. Portal retorna apenas aprovados; administrador pode filtrar por situação.'
+      operationId: getV1Psicologos
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PsicologoPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/psicologos
+                code: VALIDATION_ERROR
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: nome
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Busca por nome, sem distinção entre maiúsculas e minúsculas.
+      - name: precoMinimo
+        in: query
+        required: false
+        schema:
+          type: number
+          minimum: 0
+        description: Preço mínimo da consulta.
+      - name: precoMaximo
+        in: query
+        required: false
+        schema:
+          type: number
+          minimum: 0
+        description: Preço máximo da consulta.
+      - name: situacao
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDENTE
+          - APROVADO
+          - SUSPENSO
+        description: Situação; filtro administrativo.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/psicologos/{id}:
+    get:
+      tags:
+      - Psicologos
+      summary: Consultar psicólogo
+      description: 'Acesso: Logado. Inclui links HATEOAS conforme o contexto de acesso.'
+      operationId: getV1PsicologosId
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Psicologo'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/example-id
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/psicologos/example-id
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal` e `bff-admin
+    put:
+      tags:
+      - Psicologos
+      summary: Atualizar perfil de psicólogo
+      description: 'Acesso: Psicólogo. Somente o proprietário pode atualizar seu perfil.'
+      operationId: putV1PsicologosId
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Psicologo'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/example-id
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/psicologos/example-id
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/psicologos/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/psicologos/example-id
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarPsicologoRequest'
+      x-bedarce-caller: bff-portal
+  /v1/psicologos/{id}/status:
+    put:
+      tags:
+      - Psicologos
+      summary: Atualizar situação do psicólogo
+      description: 'Acesso: Administrador. Administração aprova ou suspende o perfil.'
+      operationId: putV1PsicologosIdStatus
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Psicologo'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/example-id/status
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/psicologos/example-id/status
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/psicologos/example-id/status
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/psicologos/example-id/status
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito com o estado atual ou regra de negócio.
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/psicologos/example-id/status
+                code: CONFLICT
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarStatusPsicologoRequest'
+      x-bedarce-caller: bff-admin
+  /v1/psicologos/estatisticas:
+    get:
+      tags:
+      - Psicologos
+      summary: Estatísticas de psicólogos
+      description: 'Acesso: Administrador. Totais agrupados pela situação.'
+      operationId: getV1PsicologosEstatisticas
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatisticasPsicologos'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/estatisticas
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/psicologos/estatisticas
+                code: FORBIDDEN
+      security:
+      - bearerAuth: []
+      x-bedarce-caller: bff-admin
+  /v1/psicologos/{id}/publicacoes:
+    post:
+      tags:
+      - Psicologos
+      summary: Criar publicação profissional
+      description: 'Acesso: Psicólogo. Publica projeto ou caso de sucesso.'
+      operationId: postV1PsicologosIdPublicacoes
+      responses:
+        '201':
+          description: Recurso criado; o endereço canônico é informado no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Publicacao'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/publicacoes/pub-3
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/example-id/publicacoes
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/psicologos/example-id/publicacoes
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/psicologos/example-id/publicacoes
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/psicologos/example-id/publicacoes
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicacaoRequest'
+      x-bedarce-caller: bff-portal
+    get:
+      tags:
+      - Psicologos
+      summary: Listar publicações do psicólogo
+      description: 'Acesso: Logado. Lista as publicações de um psicólogo.'
+      operationId: getV1PsicologosIdPublicacoes
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicacaoPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/example-id/publicacoes
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/psicologos/example-id/publicacoes
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal
+  /v1/publicacoes/{id}:
+    delete:
+      tags:
+      - Publicacoes
+      summary: Remover publicação
+      description: 'Acesso: Psicólogo e Administrador. Autor ou administrador pode remover.'
+      operationId: deleteV1PublicacoesId
+      responses:
+        '204':
+          description: Operação concluída sem conteúdo.
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/publicacoes/example-id
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/publicacoes/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/publicacoes/example-id
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/psicologos/{id}/disponibilidade:
+    put:
+      tags:
+      - Psicologos
+      summary: Definir disponibilidade semanal
+      description: 'Acesso: Psicólogo. Substitui os intervalos semanais de disponibilidade.'
+      operationId: putV1PsicologosIdDisponibilidade
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Psicologo'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/example-id/disponibilidade
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/psicologos/example-id/disponibilidade
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/psicologos/example-id/disponibilidade
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/psicologos/example-id/disponibilidade
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisponibilidadeRequest'
+      x-bedarce-caller: bff-portal
+  /v1/psicologos/{id}/horarios:
+    get:
+      tags:
+      - Psicologos
+      summary: Consultar horários livres
+      description: 'Acesso: Logado. Retorna horários livres no período informado.'
+      operationId: getV1PsicologosIdHorarios
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HorariosLivres'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/psicologos/example-id/horarios
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/psicologos/example-id/horarios
+                code: VALIDATION_ERROR
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/psicologos/example-id/horarios
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      - name: inicio
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+        description: Início do período ISO 8601.
+      - name: fim
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+        description: Fim do período ISO 8601.
+      x-bedarce-caller: bff-portal
+  /v1/consultas:
+    post:
+      tags:
+      - Consultas
+      summary: Agendar consulta
+      description: 'Acesso: Psicólogo ou Mentor. Cria uma consulta solicitada; o horário ocupado resulta em conflito.'
+      operationId: postV1Consultas
+      responses:
+        '201':
+          description: Recurso criado; o endereço canônico é informado no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consulta'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/consultas/c-9f1c
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/consultas
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/consultas
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/consultas
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/consultas
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito com o estado atual ou regra de negócio.
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/consultas
+                code: CONFLICT
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pela situação da consulta.
+      - name: inicio
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Início do intervalo ISO 8601.
+      - name: fim
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Fim do intervalo ISO 8601.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgendarConsultaRequest'
+      x-bedarce-caller: bff-portal
+    get:
+      tags:
+      - Consultas
+      summary: Listar minhas consultas
+      description: 'Acesso: Logado. Retorna as consultas do usuário; administrador vê todas.'
+      operationId: getV1Consultas
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultaPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/consultas
+                code: UNAUTHORIZED
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pela situação da consulta.
+      - name: inicio
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Início do intervalo ISO 8601.
+      - name: fim
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: Fim do intervalo ISO 8601.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/consultas/{id}:
+    get:
+      tags:
+      - Consultas
+      summary: Consultar consulta
+      description: 'Acesso: Logado. Consulta privada para seus participantes; administrador pode consultar todas.'
+      operationId: getV1ConsultasId
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consulta'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/consultas/example-id
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/consultas/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/consultas/example-id
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/consultas/{id}/confirmacao:
+    post:
+      tags:
+      - Consultas
+      summary: Confirmar consulta
+      description: 'Acesso: Psicólogo. Confirma consulta SOLICITADA.'
+      operationId: postV1ConsultasIdConfirmacao
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consulta'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/consultas/example-id/confirmacao
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/consultas/example-id/confirmacao
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/consultas/example-id/confirmacao
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito com o estado atual ou regra de negócio.
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/consultas/example-id/confirmacao
+                code: CONFLICT
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal
+  /v1/consultas/{id}/cancelamento:
+    post:
+      tags:
+      - Consultas
+      summary: Cancelar consulta
+      description: 'Acesso: Paciente e Psicólogo. Cancela consulta SOLICITADA ou CONFIRMADA.'
+      operationId: postV1ConsultasIdCancelamento
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consulta'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/consultas/example-id/cancelamento
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/consultas/example-id/cancelamento
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/consultas/example-id/cancelamento
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito com o estado atual ou regra de negócio.
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/consultas/example-id/cancelamento
+                code: CONFLICT
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelamentoRequest'
+      x-bedarce-caller: bff-portal
+  /v1/consultas/{id}/notas:
+    post:
+      tags:
+      - Consultas
+      summary: Registrar nota de acompanhamento
+      description: 'Acesso: Psicólogo responsável (decisão adotada; README marca “Pública”, mas lista 403). Decisão de contrato:
+        acesso restrito ao psicólogo responsável pela consulta, pois a operação grava nota clínica e a tabela lista 403 apesar
+        de indicar “Pública”.'
+      operationId: postV1ConsultasIdNotas
+      responses:
+        '201':
+          description: Recurso criado; o endereço canônico é informado no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Nota'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/consultas/id-novo/notas
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/consultas/example-id/notas
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/consultas/example-id/notas
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/consultas/example-id/notas
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/consultas/example-id/notas
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito com o estado atual ou regra de negócio.
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/consultas/example-id/notas
+                code: CONFLICT
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotaRequest'
+      x-bedarce-caller: bff-portal
+  /v1/pacientes/{usuarioId}/notas:
+    get:
+      tags:
+      - Pacientes
+      summary: Listar notas do paciente
+      description: 'Acesso: Psicólogo e Administrador. Notas acessíveis ao psicólogo autor ou administrador.'
+      operationId: getV1PacientesUsuarioidNotas
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotaPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/pacientes/example-id/notas
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/pacientes/example-id/notas
+                code: FORBIDDEN
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do usuário paciente.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal` e `bff-admin
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: about:blank
+        title:
+          type: string
+          example: Requisição inválida
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: Um ou mais campos são inválidos.
+        instance:
+          type: string
+          format: uri-reference
+          example: /v1/recursos
+        code:
+          type: string
+          example: VALIDATION_ERROR
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+    Link:
+      type: object
+      properties:
+        href:
+          type: string
+          format: uri-reference
+          example: /v1/consultas/c-9f1c
+        method:
+          type: string
+          enum:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          example: GET
+      additionalProperties: false
+      required:
+      - href
+      - method
+    SituacaoPsicologo:
+      type: string
+      enum:
+      - PENDENTE
+      - APROVADO
+      - SUSPENSO
+      example: APROVADO
+    StatusConsulta:
+      type: string
+      enum:
+      - SOLICITADA
+      - CONFIRMADA
+      - CONCLUIDA
+      - CANCELADA
+      example: SOLICITADA
+    Psicologo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: p-12
+        usuarioId:
+          type: string
+          example: u-7
+        nome:
+          type: string
+          example: Dra. Clara Silva
+        apelido:
+          type: string
+          example: Clara
+        descricao:
+          type: string
+          example: Atendimento acolhedor.
+        abordagem:
+          type: string
+          example: Terapia Cognitivo-Comportamental
+        valorConsulta:
+          type: number
+          format: double
+          minimum: 0
+          example: 180.0
+        contato:
+          type: string
+          example: contato@example.com
+        situacao:
+          $ref: '#/components/schemas/SituacaoPsicologo'
+        _links:
+          type: object
+          properties:
+            self:
+              $ref: '#/components/schemas/Link'
+            publicacoes:
+              $ref: '#/components/schemas/Link'
+            horarios:
+              $ref: '#/components/schemas/Link'
+          additionalProperties: false
+          required:
+          - self
+      additionalProperties: false
+      required:
+      - id
+      - usuarioId
+      - nome
+      - apelido
+      - descricao
+      - abordagem
+      - valorConsulta
+      - situacao
+      - _links
+      - contato
+      example:
+        id: p-12
+        usuarioId: u-7
+        nome: Dra. Clara Silva
+        apelido: Clara
+        descricao: Atendimento acolhedor.
+        abordagem: Terapia Cognitivo-Comportamental
+        valorConsulta: 180.0
+        situacao: APROVADO
+        _links:
+          self:
+            href: /v1/psicologos/p-12
+            method: GET
+          publicacoes:
+            href: /v1/psicologos/p-12/publicacoes
+            method: GET
+        contato: contato@example.com
+    PsicologoPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Psicologo'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: p-12
+          usuarioId: u-7
+          nome: Dra. Clara Silva
+          apelido: Clara
+          descricao: Atendimento acolhedor.
+          abordagem: TCC
+          valorConsulta: 180.0
+          situacao: APROVADO
+          _links:
+            self:
+              href: /v1/psicologos/p-12
+              method: GET
+          contato: contato@example.com
+        total: 1
+        page: 1
+        pageSize: 20
+    AtualizarPsicologoRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          example: Dra. Clara Silva
+        descricao:
+          type: string
+          example: Atendimento acolhedor.
+        abordagem:
+          type: string
+          example: Terapia Cognitivo-Comportamental
+        valorConsulta:
+          type: number
+          format: double
+          minimum: 0
+          example: 180.0
+        contato:
+          type: string
+          example: contato@example.com
+      additionalProperties: false
+      required:
+      - nome
+      - descricao
+      - abordagem
+      - valorConsulta
+      - contato
+      example:
+        nome: Dra. Clara Silva
+        descricao: Atendimento acolhedor.
+        abordagem: Terapia Cognitivo-Comportamental
+        valorConsulta: 180.0
+        contato: contato@example.com
+    AtualizarStatusPsicologoRequest:
+      type: object
+      properties:
+        situacao:
+          type: string
+          enum:
+          - APROVADO
+          - SUSPENSO
+          example: APROVADO
+      additionalProperties: false
+      required:
+      - situacao
+      example:
+        situacao: APROVADO
+    EstatisticasPsicologos:
+      type: object
+      properties:
+        porSituacao:
+          type: object
+          properties:
+            PENDENTE:
+              type: integer
+              minimum: 0
+              example: 2
+            APROVADO:
+              type: integer
+              minimum: 0
+              example: 10
+            SUSPENSO:
+              type: integer
+              minimum: 0
+              example: 1
+          additionalProperties: false
+      additionalProperties: false
+      required:
+      - porSituacao
+      example:
+        porSituacao:
+          PENDENTE: 2
+          APROVADO: 10
+          SUSPENSO: 1
+    TipoPublicacao:
+      type: string
+      enum:
+      - PROJETO
+      - CASO_SUCESSO
+      example: PROJETO
+    PublicacaoRequest:
+      type: object
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoPublicacao'
+        titulo:
+          type: string
+          example: Acolhimento com evidências
+        conteudo:
+          type: string
+          example: Descrição do trabalho e da experiência profissional.
+      additionalProperties: false
+      required:
+      - tipo
+      - titulo
+      - conteudo
+      example:
+        tipo: PROJETO
+        titulo: Acolhimento com evidências
+        conteudo: Descrição do trabalho e da experiência profissional.
+    Publicacao:
+      type: object
+      properties:
+        id:
+          type: string
+          example: pub-3
+        psicologoId:
+          type: string
+          example: p-12
+        tipo:
+          $ref: '#/components/schemas/TipoPublicacao'
+        titulo:
+          type: string
+          example: Acolhimento com evidências
+        conteudo:
+          type: string
+          example: Descrição do trabalho e da experiência profissional.
+        criadaEm:
+          type: string
+          format: date-time
+          example: '2026-10-20T10:00:00Z'
+      additionalProperties: false
+      required:
+      - id
+      - psicologoId
+      - tipo
+      - titulo
+      - conteudo
+      - criadaEm
+      example:
+        id: pub-3
+        psicologoId: p-12
+        tipo: PROJETO
+        titulo: Acolhimento com evidências
+        conteudo: Descrição do trabalho e da experiência profissional.
+        criadaEm: '2026-10-20T10:00:00Z'
+    PublicacaoPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Publicacao'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: pub-3
+          psicologoId: p-12
+          tipo: PROJETO
+          titulo: Acolhimento com evidências
+          conteudo: Descrição do trabalho.
+          criadaEm: '2026-10-20T10:00:00Z'
+        total: 1
+        page: 1
+        pageSize: 20
+    FaixaHorario:
+      type: object
+      properties:
+        diaSemana:
+          type: string
+          enum:
+          - SEGUNDA
+          - TERCA
+          - QUARTA
+          - QUINTA
+          - SEXTA
+          - SABADO
+          - DOMINGO
+          example: SEGUNDA
+        inicio:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 09:00
+        fim:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: '17:00'
+      additionalProperties: false
+      required:
+      - diaSemana
+      - inicio
+      - fim
+      example:
+        diaSemana: SEGUNDA
+        inicio: 09:00
+        fim: '17:00'
+    DisponibilidadeRequest:
+      type: object
+      properties:
+        horarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/FaixaHorario'
+          minItems: 1
+      additionalProperties: false
+      required:
+      - horarios
+      example:
+        horarios:
+        - diaSemana: SEGUNDA
+          inicio: 09:00
+          fim: '17:00'
+    HorarioLivre:
+      type: object
+      properties:
+        inicio:
+          type: string
+          format: date-time
+          example: '2026-10-25T14:00:00Z'
+        fim:
+          type: string
+          format: date-time
+          example: '2026-10-25T15:00:00Z'
+      additionalProperties: false
+      required:
+      - inicio
+      - fim
+      example:
+        inicio: '2026-10-25T14:00:00Z'
+        fim: '2026-10-25T15:00:00Z'
+    HorariosLivres:
+      type: object
+      properties:
+        psicologoId:
+          type: string
+          example: p-12
+        horarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/HorarioLivre'
+      additionalProperties: false
+      required:
+      - psicologoId
+      - horarios
+      example:
+        psicologoId: p-12
+        horarios:
+        - inicio: '2026-10-25T14:00:00Z'
+          fim: '2026-10-25T15:00:00Z'
+    AgendarConsultaRequest:
+      type: object
+      properties:
+        psicologoId:
+          type: string
+          example: p-12
+        pacienteId:
+          type: string
+          example: u-42
+        observacao:
+          type: string
+          maxLength: 500
+          example: Primeira consulta.
+        data:
+          type: string
+          format: date-time
+          example: '2026-10-25T14:00:00Z'
+      additionalProperties: false
+      required:
+      - psicologoId
+      - data
+      example:
+        psicologoId: p-12
+        observacao: Primeira consulta.
+        data: '2026-10-25T14:00:00Z'
+    Consulta:
+      type: object
+      properties:
+        id:
+          type: string
+          example: c-9f1c
+        pacienteId:
+          type: string
+          example: u-42
+        psicologoId:
+          type: string
+          example: p-12
+        status:
+          $ref: '#/components/schemas/StatusConsulta'
+        observacao:
+          type: string
+          example: Primeira consulta.
+        _links:
+          type: object
+          properties:
+            self:
+              $ref: '#/components/schemas/Link'
+            psicologo:
+              $ref: '#/components/schemas/Link'
+            confirmar:
+              $ref: '#/components/schemas/Link'
+            cancelar:
+              $ref: '#/components/schemas/Link'
+          additionalProperties: false
+          required:
+          - self
+        data:
+          type: string
+          format: date-time
+          example: '2026-10-25T14:00:00Z'
+      additionalProperties: false
+      required:
+      - id
+      - pacienteId
+      - psicologoId
+      - status
+      - data
+      - _links
+      example:
+        id: c-9f1c
+        pacienteId: u-42
+        psicologoId: p-12
+        status: SOLICITADA
+        _links:
+          self:
+            href: /v1/consultas/c-9f1c
+            method: GET
+          psicologo:
+            href: /v1/psicologos/p-12
+            method: GET
+          confirmar:
+            href: /v1/consultas/c-9f1c/confirmacao
+            method: POST
+          cancelar:
+            href: /v1/consultas/c-9f1c/cancelamento
+            method: POST
+        data: '2026-10-25T14:00:00Z'
+    ConsultaPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Consulta'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: c-9f1c
+          pacienteId: u-42
+          psicologoId: p-12
+          status: SOLICITADA
+          _links:
+            self:
+              href: /v1/consultas/c-9f1c
+              method: GET
+          data: '2026-10-25T14:00:00Z'
+        total: 1
+        page: 1
+        pageSize: 20
+    CancelamentoRequest:
+      type: object
+      properties:
+        motivo:
+          type: string
+          maxLength: 500
+          example: Imprevisto.
+      additionalProperties: false
+      example:
+        motivo: Imprevisto.
+    NotaRequest:
+      type: object
+      properties:
+        conteudo:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          example: Paciente relatou evolução no plano de recuperação.
+      additionalProperties: false
+      required:
+      - conteudo
+      example:
+        conteudo: Paciente relatou evolução no plano de recuperação.
+    Nota:
+      type: object
+      properties:
+        id:
+          type: string
+          example: n-1
+        consultaId:
+          type: string
+          example: c-9f1c
+        pacienteId:
+          type: string
+          example: u-42
+        psicologoId:
+          type: string
+          example: p-12
+        conteudo:
+          type: string
+          example: Paciente relatou evolução no plano de recuperação.
+        criadaEm:
+          type: string
+          format: date-time
+          example: '2026-10-25T15:00:00Z'
+      additionalProperties: false
+      required:
+      - id
+      - consultaId
+      - pacienteId
+      - psicologoId
+      - conteudo
+      - criadaEm
+      example:
+        id: n-1
+        consultaId: c-9f1c
+        pacienteId: u-42
+        psicologoId: p-12
+        conteudo: Paciente relatou evolução no plano de recuperação.
+        criadaEm: '2026-10-25T15:00:00Z'
+    NotaPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Nota'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: n-1
+          consultaId: c-9f1c
+          pacienteId: u-42
+          psicologoId: p-12
+          conteudo: Paciente relatou evolução.
+          criadaEm: '2026-10-25T15:00:00Z'
+        total: 1
+        page: 1
+        pageSize: 20
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token de sessão emitido por /v1/auth/login. O formato interno do token não é especificado.
