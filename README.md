@@ -223,6 +223,7 @@ O painel administrativo é a segunda interface do sistema dedicada exclusivament
 ---
 
 ## API Gateway e Roteamento
+<img width="2560" height="1440" alt="GATEWAY" src="https://github.com/user-attachments/assets/af012f5b-7c27-4865-b08c-6cb457ef513e" />
 
 O Gateway atua como a única porta de entrada aberta e acessével do sistema para todas as requisições externas originadas nos clientes, concentrando na borda da arquitetura um conjunto de responsabilidades essenciais para a segurança e a organização do tráfego, sendo ele o responsável por interceptar todas as chamadas dos clientes e aplicar regras de roteamento direcionando o fluxo para a interface interna correspondente, sem expor a estrutura interna dos microserviços de domínio ou os bancos de dados, pois por ser o ponto central do sistema, ele conhece todas as regras de roteamento, que são estruturadas por prefixos de caminhos, recebendo as chamadas dos front-ends e aplicando o direcionamento correto do fluxo por meio do gateway routing, na qual as rotas iniciadas com /portal/v1/** são repassadas de forma controlada para o bff-portal, enquanto as rotas com /admin/v1/** são encaminhadas para o bff-admin, mantendo oculta e protegida a estrutura interna dos microsserviços de domínio e as instâncias de banco de dados, ou seja, o gateway é a única porta aberta para o sistema externo, que se comunica com os serviços internos do sistema, que neste caso são os back-ends dos front-ends, na qual processam a requisição e podem se comunicar com outros serviços e banco de dados, que após o processamento devolvem as respostas ao gateway que responde de forma transparente para os cliente, sem expor sua arquitetura interna.
 
@@ -294,7 +295,12 @@ O processo que transforma um paciente em mentor é estruturado como uma transaç
 
 O caminho feliz da SAGA de evolução de paciente para mentor é iniciado quando o psicólogo aprova a evolução do participante no serviço de atendimento, a partir daí, o orquestrador executa o passo inicial, atualizando o papel do usuário de paciente para mentor no serviço de usuários e alcança o passo pivô, no serviço de comunidade, que cria o perfil oficial de mentor de forma definitiva. Com o pivô confirmado, o fluxo encerra-se com o passo final na gamificação, liberando a trilha de estudos exclusiva para o novo mentor, que ocorre mesmo se houver alguma falha durante o processo, pois após o pivô ocorre retentativas no microserviço.
 
+<img width="2560" height="1440" alt="DiagramaSequenciaCaminhoFeliz" src="https://github.com/user-attachments/assets/7c1265e7-7925-40f9-b610-564c344597d4" />
+
 O caminho triste ocorre quando uma falha de negócio impede o andamento da transação, como a rejeição do perfil de mentor pelo serviço de comunidade durante o passo pivô. Caso o erro ocorra antes ou no pivô, o orquestrador aciona transações compensatórias em ordem inversa para restaurar a consistência do sistema, executando a compensação para remover o papel de mentor no serviço de usuários. Mas se as falhas técnicas isoladas ocorrerem após a confirmação do pivô, o sistema dispensa as compensações e aplica políticas de novas tentativas até que o passo final seja concluído com sucesso. Portanto, caso ocorra algum erro no pivô, como quebra do microsserviço de comunidade, como a mudança nesse serviço não ocorreu, o orquestrador percebe o erro e aciona as transações compensatórias, na qual o atualiza o papel do usuário de mentor para paciente novamente, no serviço de usuários, retornando uma mensagem negativa ao serviço de atendimento que é o gatilho inicial da evolução de paciente para mentor.
+
+<img width="2560" height="1440" alt="DiagramaSequenciaFalha" src="https://github.com/user-attachments/assets/3b08026b-cce6-4ea3-9f03-29d560c59ef2" />
+
 
 ---
 
