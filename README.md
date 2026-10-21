@@ -225,9 +225,20 @@ O painel administrativo é a segunda interface do sistema dedicada exclusivament
 ## API Gateway e Roteamento
 <img width="2560" height="1440" alt="GATEWAY" src="https://github.com/user-attachments/assets/af012f5b-7c27-4865-b08c-6cb457ef513e" />
 
-O Gateway atua como a única porta de entrada aberta e acessível do sistema para todas as requisições externas originadas nos clientes, concentrando na borda da arquitetura um conjunto de responsabilidades essenciais para a segurança e a organização do tráfego, sendo ele o responsável por interceptar todas as chamadas dos clientes e aplicar regras de roteamento direcionando o fluxo para a interface interna correspondente, sem expor a estrutura interna dos microsserviços de domínio ou os bancos de dados, pois por ser o ponto central do sistema, ele conhece todas as regras de roteamento, que são estruturadas por prefixos de caminhos, recebendo as chamadas dos front-ends e aplicando o direcionamento correto do fluxo por meio do gateway routing, na qual as rotas iniciadas com /portal/v1/** são repassadas de forma controlada para o bff-portal, enquanto as rotas com /admin/v1/** são encaminhadas para o bff-admin, mantendo oculta e protegida a estrutura interna dos microsserviços de domínio e as instâncias de banco de dados, ou seja, o gateway é a única porta aberta para o sistema externo, que se comunica com os serviços internos do sistema, que neste caso são os back-ends dos front-ends, na qual processam a requisição e podem se comunicar com outros serviços e banco de dados, que após o processamento devolvem as respostas ao gateway que responde de forma transparente para os cliente, sem expor sua arquitetura interna.
+O Gateway é a única porta de entrada do sistema para requisições externas. Ele não contém regras de negócio, apenas intercepta as chamadas e as encaminha, sem expor os microsserviços nem os bancos de dados.
 
-Além do roteamento, o gateway assume atribuições críticas de segurança, como o controle do volume de requisições, para evitar sobrecarga na aplicação, por meio do rate limiting, o que protege a aplicação contra abusos e tentativas de sobrecarga. Dessa forma, todas essas atribuições do gateway, faz com que ele se mantenha genérico e livre de regras de negócio, na qual sua função é interceptar as requisições externas, sendo a única interface exposta, repassando o fluxo para o BFF correspondente, que aciona os microsserviços de domínio e seus respectivos bancos de dados isolados para agregar os dados, devolvendo a resposta completa de volta ao cliente de maneira totalmente transparente, rápida e segura por meio do gateway
+**Regras de roteamento (por prefixo de caminho):**
+
+| Prefixo | Destino |
+| --- | --- |
+| `/portal/v1/**` | `bff-portal` |
+| `/admin/v1/**` | `bff-admin` |
+
+**Responsabilidades:**
+- **Roteamento:** direciona cada chamada ao BFF correspondente.
+- **Autenticação:** valida o token antes de repassar a requisição.
+- **Rate limiting:** limita o volume de requisições e responde `429` ao exceder, protegendo contra abusos e sobrecarga.
+- **Isolamento:** mantém a estrutura interna oculta; o cliente só conhece o gateway.
 
 ---
 
