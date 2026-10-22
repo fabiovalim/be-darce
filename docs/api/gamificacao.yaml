@@ -1,0 +1,1437 @@
+openapi: 3.1.0
+info:
+  title: BEDARCE — Microsserviço de Gamificação
+  version: 1.0.0
+  description: Trilhas, etapas, conclusão, pontuação, níveis e orquestração da promoção a mentor. O comando de conclusão atualiza
+    sincronicamente os pontos e o nível; as consultas de progresso usam o modelo de leitura, cuja defasagem projetada é de
+    até 2 segundos. O Gateway pode responder 429 quando excede o rate limit; o BFF pode responder 503 quando uma dependência
+    necessária fica indisponível, conforme a arquitetura descrita no README.
+servers:
+- url: /
+  description: Origem configurada pelo ambiente para o microsserviço; os caminhos deste contrato incluem /v1.
+tags:
+- name: Trilhas
+- name: Etapas
+- name: Usuarios
+- name: Estatisticas
+- name: Promocoes Mentor
+- name: Internal
+paths:
+  /v1/trilhas:
+    get:
+      tags:
+      - Trilhas
+      summary: Listar trilhas
+      description: 'Acesso: Paciente e Administrador. Lista trilhas ativas, filtradas por público-alvo.'
+      operationId: getV1Trilhas
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrilhaPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas
+                code: UNAUTHORIZED
+      parameters:
+      - name: publicoAlvo
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pelo público-alvo.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-portal` e `bff-admin
+    post:
+      tags:
+      - Trilhas
+      summary: Criar trilha
+      description: 'Acesso: Administrador. Cria uma trilha.'
+      operationId: postV1Trilhas
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trilha'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/trilhas/t-1
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/trilhas
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/trilhas
+                code: FORBIDDEN
+      parameters:
+      - name: publicoAlvo
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pelo público-alvo.
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrilhaRequest'
+      x-bedarce-caller: bff-admin
+  /v1/trilhas/{id}:
+    get:
+      tags:
+      - Trilhas
+      summary: Consultar trilha e etapas
+      description: 'Acesso: Paciente e Administrador. Retorna trilha com etapas ordenadas.'
+      operationId: getV1TrilhasId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trilha'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas/example-id
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/trilhas/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal` e `bff-admin
+    put:
+      tags:
+      - Trilhas
+      summary: Atualizar trilha
+      description: 'Acesso: Administrador. Substitui nome, descrição e público-alvo.'
+      operationId: putV1TrilhasId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trilha'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas/example-id
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/trilhas/example-id
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/trilhas/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/trilhas/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrilhaRequest'
+      x-bedarce-caller: bff-admin
+    delete:
+      tags:
+      - Trilhas
+      summary: Remover trilha
+      description: 'Acesso: Administrador. Remove trilha; conflito se estiver em uso por usuários.'
+      operationId: deleteV1TrilhasId
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Operação concluída sem conteúdo.
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas/example-id
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/trilhas/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/trilhas/example-id
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/trilhas/example-id
+                code: CONFLICT
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-admin
+  /v1/trilhas/{trilhaId}/etapas:
+    post:
+      tags:
+      - Trilhas
+      summary: Criar etapa na trilha
+      description: 'Acesso: Administrador. Insere etapa na ordem solicitada; etapas existentes são reordenadas.'
+      operationId: postV1TrilhasTrilhaidEtapas
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Recurso criado; URI no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Etapa'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/trilhas/t-1/etapas/e-1
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas/example-id/etapas
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/trilhas/example-id/etapas
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/trilhas/example-id/etapas
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/trilhas/example-id/etapas
+                code: NOT_FOUND
+      parameters:
+      - name: trilhaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da trilha.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EtapaRequest'
+      x-bedarce-caller: bff-admin
+  /v1/trilhas/{trilhaId}/etapas/{etapaId}:
+    get:
+      tags:
+      - Trilhas
+      summary: Consultar etapa
+      description: 'Acesso: Paciente e Administrador. Etapa pode retornar 403 enquanto estiver bloqueada.'
+      operationId: getV1TrilhasTrilhaidEtapasEtapaid
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Etapa'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas/example-id/etapas/example-id
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/trilhas/example-id/etapas/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/trilhas/example-id/etapas/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: trilhaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da trilha.
+      - name: etapaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da etapa.
+      x-bedarce-caller: bff-portal` e `bff-admin
+    put:
+      tags:
+      - Trilhas
+      summary: Atualizar etapa
+      description: 'Acesso: Administrador. Atualiza conteúdo, quiz, pontuação e ordem.'
+      operationId: putV1TrilhasTrilhaidEtapasEtapaid
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Etapa'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/trilhas/example-id/etapas/example-id
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/trilhas/example-id/etapas/example-id
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/trilhas/example-id/etapas/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/trilhas/example-id/etapas/example-id
+                code: NOT_FOUND
+      parameters:
+      - name: trilhaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da trilha.
+      - name: etapaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da etapa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EtapaRequest'
+      x-bedarce-caller: bff-admin
+  /v1/etapas/{id}/conclusao:
+    post:
+      tags:
+      - Etapas
+      summary: Concluir etapa
+      description: 'Acesso: Paciente. Valida pré-requisitos e respostas, registra pontos; 409 se já concluída.'
+      operationId: postV1EtapasIdConclusao
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConclusaoResponse'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/etapas/example-id/conclusao
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Requisição inválida
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/etapas/example-id/conclusao
+                code: VALIDATION_ERROR
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/etapas/example-id/conclusao
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/etapas/example-id/conclusao
+                code: NOT_FOUND
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/etapas/example-id/conclusao
+                code: CONFLICT
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConclusaoRequest'
+      x-bedarce-caller: bff-portal
+  /v1/usuarios/me/progresso:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar meu progresso
+      description: 'Acesso: Paciente. Resumo no modelo de leitura; pode apresentar até 2 segundos de defasagem.'
+      operationId: getV1UsuariosMeProgresso
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Progresso'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/me/progresso
+                code: UNAUTHORIZED
+      x-bedarce-caller: bff-portal
+  /v1/usuarios/{id}/nivel:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar nível público
+      description: 'Acesso: Logado. Expõe nível e pontos do usuário.'
+      operationId: getV1UsuariosIdNivel
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NivelPublico'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/example-id/nivel
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/usuarios/example-id/nivel
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-portal
+  /v1/usuarios/{id}/progresso:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar progresso administrativo
+      description: 'Acesso: Administrador. Resumo completo do progresso do usuário.'
+      operationId: getV1UsuariosIdProgresso
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Progresso'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/example-id/progresso
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/usuarios/example-id/progresso
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não encontrado
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/usuarios/example-id/progresso
+                code: NOT_FOUND
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador do recurso.
+      x-bedarce-caller: bff-admin
+  /v1/estatisticas/niveis:
+    get:
+      tags:
+      - Estatisticas
+      summary: Consultar estatísticas de níveis
+      description: 'Acesso: Administrador. Total de usuários por nível.'
+      operationId: getV1EstatisticasNiveis
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatisticasNiveis'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Não autenticado
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/estatisticas/niveis
+                code: UNAUTHORIZED
+        '403':
+          description: O papel ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Acesso negado
+                status: 403
+                detail: O papel ou a relação com o recurso não autoriza a operação.
+                instance: /v1/estatisticas/niveis
+                code: FORBIDDEN
+      x-bedarce-caller: bff-admin
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: about:blank
+        title:
+          type: string
+          example: Requisição inválida
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: Um ou mais campos são inválidos.
+        instance:
+          type: string
+          format: uri-reference
+          example: /v1/recursos
+        code:
+          type: string
+          example: VALIDATION_ERROR
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+    PublicoAlvo:
+      type: string
+      enum:
+      - PACIENTE
+      - MENTOR
+      example: PACIENTE
+    TipoEtapa:
+      type: string
+      enum:
+      - LEITURA
+      - VIDEO
+      - ATIVIDADE
+      - QUESTIONARIO
+      example: LEITURA
+    TrilhaRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Primeiros passos
+        descricao:
+          type: string
+          maxLength: 1000
+          example: Conteúdo introdutório de recuperação.
+        publicoAlvo:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicoAlvo'
+          minItems: 1
+          uniqueItems: true
+          example:
+          - PACIENTE
+      additionalProperties: false
+      required:
+      - nome
+      - descricao
+      - publicoAlvo
+      example:
+        nome: Primeiros passos
+        descricao: Conteúdo introdutório de recuperação.
+        publicoAlvo:
+        - PACIENTE
+    EtapaResumo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: e-1
+        trilhaId:
+          type: string
+          example: t-1
+        titulo:
+          type: string
+          example: Reconhecendo gatilhos
+        ordem:
+          type: integer
+          minimum: 1
+          example: 1
+        tipo:
+          $ref: '#/components/schemas/TipoEtapa'
+        pontuacao:
+          type: integer
+          minimum: 0
+          example: 10
+        bloqueada:
+          type: boolean
+          example: false
+      additionalProperties: false
+      required:
+      - id
+      - trilhaId
+      - titulo
+      - ordem
+      - tipo
+      - pontuacao
+      - bloqueada
+      example:
+        id: e-1
+        trilhaId: t-1
+        titulo: Reconhecendo gatilhos
+        ordem: 1
+        tipo: LEITURA
+        pontuacao: 10
+        bloqueada: false
+    Trilha:
+      type: object
+      properties:
+        id:
+          type: string
+          example: t-1
+        nome:
+          type: string
+          example: Primeiros passos
+        descricao:
+          type: string
+          example: Conteúdo introdutório de recuperação.
+        publicoAlvo:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicoAlvo'
+          uniqueItems: true
+          example:
+          - PACIENTE
+        ativa:
+          type: boolean
+          example: true
+        etapas:
+          type: array
+          items:
+            $ref: '#/components/schemas/EtapaResumo'
+      additionalProperties: false
+      required:
+      - id
+      - nome
+      - descricao
+      - publicoAlvo
+      - ativa
+      - etapas
+      example:
+        id: t-1
+        nome: Primeiros passos
+        descricao: Conteúdo introdutório de recuperação.
+        publicoAlvo:
+        - PACIENTE
+        ativa: true
+        etapas:
+        - id: e-1
+          trilhaId: t-1
+          titulo: Reconhecendo gatilhos
+          ordem: 1
+          tipo: LEITURA
+          pontuacao: 10
+          bloqueada: false
+    TrilhaPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trilha'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: t-1
+          nome: Primeiros passos
+          descricao: Conteúdo introdutório.
+          publicoAlvo:
+          - PACIENTE
+          ativa: true
+          etapas: []
+        total: 1
+        page: 1
+        pageSize: 20
+    EtapaRequest:
+      type: object
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Reconhecendo gatilhos
+        tipo:
+          $ref: '#/components/schemas/TipoEtapa'
+        conteudo:
+          type: string
+          example: Material educativo sobre identificação de gatilhos.
+        urlConteudo:
+          type: string
+          format: uri
+          example: https://example.org/material
+        ordem:
+          type: integer
+          minimum: 1
+          example: 1
+        pontuacao:
+          type: integer
+          minimum: 0
+          example: 10
+        quiz:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestaoQuizAdmin'
+      additionalProperties: false
+      required:
+      - titulo
+      - tipo
+      - conteudo
+      - ordem
+      - pontuacao
+      example:
+        titulo: Reconhecendo gatilhos
+        tipo: LEITURA
+        conteudo: Material educativo sobre identificação de gatilhos.
+        ordem: 1
+        pontuacao: 10
+    Etapa:
+      type: object
+      properties:
+        id:
+          type: string
+          example: e-1
+        trilhaId:
+          type: string
+          example: t-1
+        titulo:
+          type: string
+          example: Reconhecendo gatilhos
+        tipo:
+          $ref: '#/components/schemas/TipoEtapa'
+        conteudo:
+          type: string
+          example: Material educativo sobre identificação de gatilhos.
+        urlConteudo:
+          type: string
+          format: uri
+          example: https://example.org/material
+        ordem:
+          type: integer
+          minimum: 1
+          example: 1
+        pontuacao:
+          type: integer
+          minimum: 0
+          example: 10
+        quiz:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestaoQuizPublica'
+        bloqueada:
+          type: boolean
+          example: false
+      additionalProperties: false
+      required:
+      - id
+      - trilhaId
+      - titulo
+      - tipo
+      - conteudo
+      - ordem
+      - pontuacao
+      - bloqueada
+      example:
+        id: e-1
+        trilhaId: t-1
+        titulo: Reconhecendo gatilhos
+        tipo: LEITURA
+        conteudo: Material educativo sobre identificação de gatilhos.
+        ordem: 1
+        pontuacao: 10
+        quiz: []
+        bloqueada: false
+    ConclusaoRequest:
+      type: object
+      properties:
+        respostas:
+          type: array
+          items:
+            type: object
+            properties:
+              questaoId:
+                type: string
+                example: q-1
+              opcaoSelecionada:
+                type: integer
+                minimum: 0
+                example: 0
+            additionalProperties: false
+            required:
+            - questaoId
+            - opcaoSelecionada
+          example: []
+      additionalProperties: false
+      example:
+        respostas: []
+    ConclusaoResponse:
+      type: object
+      properties:
+        etapaId:
+          type: string
+          example: e-1
+        pontosGanhos:
+          type: integer
+          minimum: 0
+          example: 10
+        pontosTotais:
+          type: integer
+          minimum: 0
+          example: 40
+        nivel:
+          type: integer
+          minimum: 1
+          example: 2
+        concluidaEm:
+          type: string
+          format: date-time
+          example: '2026-10-21T12:00:00Z'
+      additionalProperties: false
+      required:
+      - etapaId
+      - pontosGanhos
+      - pontosTotais
+      - nivel
+      - concluidaEm
+      example:
+        etapaId: e-1
+        pontosGanhos: 10
+        pontosTotais: 40
+        nivel: 2
+        concluidaEm: '2026-10-21T12:00:00Z'
+    Progresso:
+      type: object
+      properties:
+        usuarioId:
+          type: string
+          example: u-42
+        pontosTotais:
+          type: integer
+          minimum: 0
+          example: 40
+        nivel:
+          type: integer
+          minimum: 1
+          example: 2
+        etapasConcluidas:
+          type: integer
+          minimum: 0
+          example: 4
+        totalEtapas:
+          type: integer
+          minimum: 0
+          example: 12
+        trilhas:
+          type: array
+          items:
+            type: object
+            properties:
+              trilhaId:
+                type: string
+                example: t-1
+              etapasConcluidas:
+                type: integer
+                minimum: 0
+                example: 4
+              totalEtapas:
+                type: integer
+                minimum: 0
+                example: 8
+              progressoPercentual:
+                type: number
+                minimum: 0
+                maximum: 100
+                example: 50
+            additionalProperties: false
+            required:
+            - trilhaId
+            - etapasConcluidas
+            - totalEtapas
+            - progressoPercentual
+      additionalProperties: false
+      required:
+      - usuarioId
+      - pontosTotais
+      - nivel
+      - etapasConcluidas
+      - totalEtapas
+      - trilhas
+      example:
+        usuarioId: u-42
+        pontosTotais: 40
+        nivel: 2
+        etapasConcluidas: 4
+        totalEtapas: 12
+        trilhas:
+        - trilhaId: t-1
+          etapasConcluidas: 4
+          totalEtapas: 8
+          progressoPercentual: 50
+    NivelPublico:
+      type: object
+      properties:
+        usuarioId:
+          type: string
+          example: u-42
+        pontos:
+          type: integer
+          minimum: 0
+          example: 40
+        nivel:
+          type: integer
+          minimum: 1
+          example: 2
+      additionalProperties: false
+      required:
+      - usuarioId
+      - pontos
+      - nivel
+      example:
+        usuarioId: u-42
+        pontos: 40
+        nivel: 2
+    EstatisticasNiveis:
+      type: object
+      properties:
+        niveis:
+          type: array
+          items:
+            type: object
+            properties:
+              nivel:
+                type: integer
+                minimum: 1
+                example: 2
+              usuarios:
+                type: integer
+                minimum: 0
+                example: 18
+            additionalProperties: false
+            required:
+            - nivel
+            - usuarios
+      additionalProperties: false
+      required:
+      - niveis
+      example:
+        niveis:
+        - nivel: 1
+          usuarios: 50
+        - nivel: 2
+          usuarios: 18
+    QuestaoQuizAdmin:
+      type: object
+      properties:
+        id:
+          type: string
+          example: q-1
+        enunciado:
+          type: string
+          example: Qual estratégia ajuda a reconhecer um gatilho?
+        opcoes:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          example:
+          - Observar situações
+          - Ignorar sentimentos
+        respostaCorreta:
+          type: integer
+          minimum: 0
+          example: 0
+      additionalProperties: false
+      required:
+      - id
+      - enunciado
+      - opcoes
+      - respostaCorreta
+      example:
+        id: q-1
+        enunciado: Qual estratégia ajuda a reconhecer um gatilho?
+        opcoes:
+        - Observar situações
+        - Ignorar sentimentos
+        respostaCorreta: 0
+    QuestaoQuizPublica:
+      type: object
+      properties:
+        id:
+          type: string
+          example: q-1
+        enunciado:
+          type: string
+          example: Qual estratégia ajuda a reconhecer um gatilho?
+        opcoes:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          example:
+          - Observar situações
+          - Ignorar sentimentos
+      additionalProperties: false
+      required:
+      - id
+      - enunciado
+      - opcoes
+      example:
+        id: q-1
+        enunciado: Qual estratégia ajuda a reconhecer um gatilho?
+        opcoes:
+        - Observar situações
+        - Ignorar sentimentos
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token de sessão emitido por /v1/auth/login. O formato interno do token não é especificado.
+    internalServiceAuth:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+      description: Credencial de serviço para chamadas internas que não passam pelo Gateway.

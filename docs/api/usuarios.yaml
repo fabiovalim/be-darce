@@ -1,0 +1,833 @@
+openapi: 3.1.0
+info:
+  title: BEDARCE — Microsserviço de Usuários
+  version: 1.0.0
+  description: 'Identidade, autenticação, perfis e papéis. A API usa /v1; as rotas públicas são cadastro e login. Decisões
+    de modelagem adotadas: familiar é representado pelo papel PACIENTE; promoção acrescenta MENTOR sem remover PACIENTE; cadastro
+    público aceita PACIENTE ou PSICOLOGO; IDs são strings opacas; tokens são enviados como Bearer sem assumir JWT. O Gateway
+    pode responder 429 quando excede o rate limit; o BFF pode responder 503 quando uma dependência necessária fica indisponível,
+    conforme a arquitetura descrita no README.'
+servers:
+- url: /
+  description: Origem configurada pelo ambiente para o microsserviço; os caminhos deste contrato incluem /v1.
+tags:
+- name: Auth
+- name: Usuarios
+- name: Internal
+paths:
+  /v1/auth/registro:
+    post:
+      tags:
+      - Auth
+      summary: Registrar usuário
+      description: 'Acesso: Pública. Cria uma conta pública. Familiar é representado como PACIENTE; contas PSICOLOGO ficam
+        pendentes de validação administrativa.'
+      operationId: postV1AuthRegistro
+      responses:
+        '201':
+          description: Recurso criado; o endereço canônico é informado no cabeçalho Location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          headers:
+            Location:
+              description: URI do recurso criado.
+              schema:
+                type: string
+                format: uri-reference
+                example: /v1/usuarios/u-42
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/auth/registro
+                code: VALIDATION_ERROR
+        '409':
+          description: Conflito com o estado atual ou regra de negócio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Conflito com o estado atual ou regra de negócio.
+                status: 409
+                detail: Conflito com o estado atual ou regra de negócio.
+                instance: /v1/auth/registro
+                code: CONFLICT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CadastroRequest'
+      x-bedarce-caller: bff-portal
+  /v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Autenticar usuário
+      description: 'Acesso: Pública. Valida as credenciais e emite um token de sessão Bearer.'
+      operationId: postV1AuthLogin
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/auth/login
+                code: UNAUTHORIZED
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      x-bedarce-caller: bff-portal` e `bff-admin
+  /v1/usuarios/me:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar meu perfil
+      description: 'Acesso: Logado. Retorna o perfil autenticado.'
+      operationId: getV1UsuariosMe
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/me
+                code: UNAUTHORIZED
+      security:
+      - bearerAuth: []
+      x-bedarce-caller: bff-portal
+    put:
+      tags:
+      - Usuarios
+      summary: Atualizar meu perfil
+      description: 'Acesso: Logado. Substitui apelido e descrição do próprio usuário.'
+      operationId: putV1UsuariosMe
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/me
+                code: UNAUTHORIZED
+        '400':
+          description: Dados ou parâmetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Dados ou parâmetros inválidos.
+                status: 400
+                detail: Dados ou parâmetros inválidos.
+                instance: /v1/usuarios/me
+                code: VALIDATION_ERROR
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerfilUpdateRequest'
+      x-bedarce-caller: bff-portal
+  /v1/usuarios/{id}/perfil-publico:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar perfil público
+      description: 'Acesso: Psicólogo, Mentor ou Administrador. Expõe somente apelido, descrição e papéis.'
+      operationId: getV1UsuariosIdPerfilPublico
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerfilPublico'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/example-id/perfil-publico
+                code: UNAUTHORIZED
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/usuarios/example-id/perfil-publico
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador opaco do usuário.
+      x-bedarce-caller: bff-portal
+  /v1/usuarios:
+    get:
+      tags:
+      - Usuarios
+      summary: Listar usuários
+      description: 'Acesso: Administrador. Lista usuários para gestão administrativa. O filtro ids aceita uma lista separada
+        por vírgulas.'
+      operationId: getV1Usuarios
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioPage'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/usuarios
+                code: FORBIDDEN
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: tipo
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra por papel.
+      - name: situacao
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filtra pela situação da conta.
+      - name: ids
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+        description: Lista de IDs separados por vírgulas.
+        style: form
+        explode: false
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      x-bedarce-caller: bff-admin
+  /v1/usuarios/{id}:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar usuário
+      description: 'Acesso: Administrador. Retorna os dados administrativos do usuário.'
+      operationId: getV1UsuariosId
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/example-id
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/usuarios/example-id
+                code: FORBIDDEN
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/usuarios/example-id
+                code: NOT_FOUND
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador opaco do usuário.
+      x-bedarce-caller: bff-admin
+  /v1/usuarios/estatisticas:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar estatísticas de usuários
+      description: 'Acesso: Administrador. Retorna totais por tipo e situação.'
+      operationId: getV1UsuariosEstatisticas
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatisticasUsuarios'
+        '401':
+          description: Token ausente, inválido ou expirado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Token ausente, inválido ou expirado.
+                status: 401
+                detail: Token ausente, inválido ou expirado.
+                instance: /v1/usuarios/estatisticas
+                code: UNAUTHORIZED
+        '403':
+          description: O papel autenticado ou a relação com o recurso não autoriza a operação.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                status: 403
+                detail: O papel autenticado ou a relação com o recurso não autoriza a operação.
+                instance: /v1/usuarios/estatisticas
+                code: FORBIDDEN
+      security:
+      - bearerAuth: []
+      x-bedarce-caller: bff-admin
+  /v1/mentores:
+    put:
+      tags:
+      - Internal
+      summary: Adicionar papel de mentor na SAGA
+      description: 'Acesso: Interna. Passo interno idempotente que acrescenta MENTOR aos papéis do usuário identificado no
+        corpo. O sagaId correlaciona a transação.'
+      operationId: putV1InternalSagasSagaidPapelMentor
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioPapeisResponse'
+        '404':
+          description: Recurso não encontrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                type: about:blank
+                title: Recurso não encontrado.
+                status: 404
+                detail: Recurso não encontrado.
+                instance: /v1/internal/sagas/example-id/papel-mentor
+                code: NOT_FOUND
+      security:
+      - internalServiceAuth: []
+      parameters:
+      - name: sagaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da SAGA.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromocaoPapelRequest'
+      x-bedarce-caller: gamificacao-service
+    delete:
+      tags:
+      - Internal
+      summary: Compensar papel de mentor na SAGA
+      description: 'Acesso: Interna. Remove o papel MENTOR associado à SAGA; a operação é correlacionada por sagaId.'
+      operationId: deleteV1InternalSagasSagaidPapelMentor
+      responses:
+        '204':
+          description: Operação concluída sem conteúdo.
+      security:
+      - internalServiceAuth: []
+      parameters:
+      - name: sagaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Identificador da SAGA.
+      x-bedarce-caller: gamificacao-service
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: about:blank
+        title:
+          type: string
+          example: Requisição inválida
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: Um ou mais campos são inválidos.
+        instance:
+          type: string
+          format: uri-reference
+          example: /v1/recursos
+        code:
+          type: string
+          example: VALIDATION_ERROR
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+    TipoUsuario:
+      type: string
+      enum:
+      - PACIENTE
+      - PSICOLOGO
+      - MENTOR
+      - ADMINISTRADOR
+      example: PACIENTE
+    SituacaoUsuario:
+      type: string
+      enum:
+      - PENDENTE
+      - ATIVO
+      - INATIVO
+      - SUSPENSO
+      example: ATIVO
+    CadastroRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: ana@example.com
+        senha:
+          type: string
+          format: password
+          minLength: 8
+          example: SenhaForte123!
+        tipo:
+          type: string
+          enum:
+          - PACIENTE
+          - PSICOLOGO
+          example: PACIENTE
+        apelido:
+          type: string
+          maxLength: 80
+          example: Ana
+      additionalProperties: false
+      required:
+      - email
+      - senha
+      - tipo
+      example:
+        email: ana@example.com
+        senha: SenhaForte123!
+        tipo: PACIENTE
+        apelido: Ana
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: ana@example.com
+        senha:
+          type: string
+          format: password
+          example: SenhaForte123!
+      additionalProperties: false
+      required:
+      - email
+      - senha
+      example:
+        email: ana@example.com
+        senha: SenhaForte123!
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJ...opaque-session-token
+        tokenType:
+          type: string
+          const: Bearer
+          example: Bearer
+        usuario:
+          $ref: '#/components/schemas/Usuario'
+      additionalProperties: false
+      required:
+      - token
+      - tokenType
+      - usuario
+      example:
+        token: eyJ...opaque-session-token
+        tokenType: Bearer
+        usuario:
+          id: u-42
+          email: ana@example.com
+          apelido: Ana
+          descricao: ''
+          tipos:
+          - PACIENTE
+          situacao: ATIVO
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: string
+          example: u-42
+        email:
+          type: string
+          format: email
+          example: ana@example.com
+        apelido:
+          type: string
+          example: Ana
+        descricao:
+          type: string
+          example: Em recuperação.
+        tipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/TipoUsuario'
+          uniqueItems: true
+          example:
+          - PACIENTE
+        situacao:
+          $ref: '#/components/schemas/SituacaoUsuario'
+      additionalProperties: false
+      required:
+      - id
+      - email
+      - apelido
+      - descricao
+      - tipos
+      - situacao
+      example:
+        id: u-42
+        email: ana@example.com
+        apelido: Ana
+        descricao: Em recuperação.
+        tipos:
+        - PACIENTE
+        situacao: ATIVO
+    PerfilPublico:
+      type: object
+      properties:
+        apelido:
+          type: string
+          example: Ana
+        descricao:
+          type: string
+          example: Em recuperação.
+        tipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/TipoUsuario'
+          uniqueItems: true
+          example:
+          - PACIENTE
+      additionalProperties: false
+      required:
+      - apelido
+      - descricao
+      - tipos
+      example:
+        apelido: Ana
+        descricao: Em recuperação.
+        tipos:
+        - PACIENTE
+    PerfilUpdateRequest:
+      type: object
+      properties:
+        apelido:
+          type: string
+          maxLength: 80
+          example: Ana B.
+        descricao:
+          type: string
+          maxLength: 500
+          example: Seguindo minha jornada de recuperação.
+      additionalProperties: false
+      required:
+      - apelido
+      - descricao
+      example:
+        apelido: Ana B.
+        descricao: Seguindo minha jornada de recuperação.
+    UsuarioPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Usuario'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      example:
+        items:
+        - id: u-42
+          email: ana@example.com
+          apelido: Ana
+          descricao: ''
+          tipos:
+          - PACIENTE
+          situacao: ATIVO
+        total: 1
+        page: 1
+        pageSize: 20
+    EstatisticasUsuarios:
+      type: object
+      properties:
+        porTipo:
+          type: object
+          properties:
+            PACIENTE:
+              type: integer
+              minimum: 0
+              example: 120
+            PSICOLOGO:
+              type: integer
+              minimum: 0
+              example: 12
+            MENTOR:
+              type: integer
+              minimum: 0
+              example: 8
+            ADMINISTRADOR:
+              type: integer
+              minimum: 0
+              example: 2
+          additionalProperties: false
+        porSituacao:
+          type: object
+          properties:
+            PENDENTE:
+              type: integer
+              minimum: 0
+              example: 3
+            ATIVO:
+              type: integer
+              minimum: 0
+              example: 130
+            INATIVO:
+              type: integer
+              minimum: 0
+              example: 5
+            SUSPENSO:
+              type: integer
+              minimum: 0
+              example: 4
+          additionalProperties: false
+      additionalProperties: false
+      required:
+      - porTipo
+      - porSituacao
+      example:
+        porTipo:
+          PACIENTE: 120
+          PSICOLOGO: 12
+          MENTOR: 8
+          ADMINISTRADOR: 2
+        porSituacao:
+          PENDENTE: 3
+          ATIVO: 130
+          INATIVO: 5
+          SUSPENSO: 4
+    PromocaoPapelRequest:
+      type: object
+      properties:
+        usuarioId:
+          type: string
+          example: u-42
+      additionalProperties: false
+      required:
+      - usuarioId
+      example:
+        usuarioId: u-42
+    UsuarioPapeisResponse:
+      type: object
+      properties:
+        usuarioId:
+          type: string
+          example: u-42
+        tipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/TipoUsuario'
+          uniqueItems: true
+          example:
+          - PACIENTE
+          - MENTOR
+      additionalProperties: false
+      required:
+      - usuarioId
+      - tipos
+      example:
+        usuarioId: u-42
+        tipos:
+        - PACIENTE
+        - MENTOR
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token de sessão emitido por /v1/auth/login. O formato interno do token não é especificado.
+    internalServiceAuth:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+      description: Credencial de serviço para chamadas internas que não passam pelo Gateway.
